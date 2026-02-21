@@ -13,6 +13,7 @@ import { BranchSelect, LanguageSelect } from "@/components/Select";
 import { useAutoSavePR } from "@/hooks/useAutoSavePR";
 import { useFetchPR } from "@/hooks/useFetchPR";
 import { useGeneratePR } from "@/hooks/useGeneratePR";
+import { usePrefetchDiffs } from "@/hooks/usePrefetchDiffs";
 import { useRepository } from "@/hooks/useRepository";
 import { useSendPR } from "@/hooks/useSendPR";
 import type { PRLanguage } from "@/types/languages";
@@ -76,6 +77,7 @@ export default function PREditorPageContent({
 	const { isSendingPr, providerPrUrl, sendPR } = useSendPR(repoId, prId);
 
 	useAutoSavePR({ prId, repoId, title, description, startAutoSave });
+	usePrefetchDiffs(repoId, baseBranch, compareBranch, mode);
 
 	// ----- Functions -----
 	const handleGenerate = useCallback(async () => {
