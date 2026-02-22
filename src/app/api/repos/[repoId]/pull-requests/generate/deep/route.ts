@@ -5,18 +5,18 @@ import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { cerebras } from "@/lib/server/ai/client";
 import { buildPRFromDiffs } from "@/lib/server/ai/prompt";
+import { createSSEResponse, streamCerebrasTokens } from "@/lib/server/ai/streamSSE";
 import { summarizeDiffsForPR } from "@/lib/server/ai/summarizeFileDiffs";
 import {
 	BadRequestError,
 	ForbiddenError,
 	NotFoundError,
 	UnauthorizedError,
-	UnprocessableEntityError,
 } from "@/lib/server/error";
 import { getFileDiffs } from "@/lib/server/github/fileDiffs";
 import { handleError } from "@/lib/server/handleError";
 import { redis } from "@/lib/server/redis/client";
-import { buildDiffsCacheKey } from "@/lib/server/redis/diffsCacheKey";
+import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import {
 	aiLimiterPerMinute,
@@ -26,6 +26,8 @@ import {
 import { getCurrentUser } from "@/lib/server/session";
 import { formatDateTimeForErrors } from "@/lib/utils/formatDateTime";
 import type { IPRResponse } from "@/types/pullRequests";
+
+export const dynamic = "force-dynamic";
 
 const prisma = getPrisma();
 const MIN_DESCRIPTION_LENGTH = 500;
@@ -80,7 +82,7 @@ export async function POST(
 
 		// 6. Fetch file diffs (try prefetch cache first, fall back to GitHub)
 		const t0 = performance.now();
-		const cacheKey = buildDiffsCacheKey(repoId, safeBase, safeCompare);
+		const cacheKey = buildCompareCacheKey(repoId, safeBase, safeCompare);
 
 		let files: Awaited<ReturnType<typeof getFileDiffs>>;
 		let cacheHit = false;
@@ -88,9 +90,9 @@ export async function POST(
 		try {
 			const cached = await redis.get<string>(cacheKey);
 			if (cached) {
-				files = JSON.parse(typeof cached === "string" ? cached : JSON.stringify(cached));
+				const data = JSON.parse(typeof cached === "string" ? cached : JSON.stringify(cached));
+				files = data.files;
 				cacheHit = true;
-				await redis.del(cacheKey);
 			}
 		} catch {
 			// Cache read failed — fall through to GitHub
@@ -167,73 +169,84 @@ export async function POST(
 		const t3 = performance.now();
 		console.log(`[DEEP] Summarize diffs (Cerebras): ${(t3 - t2).toFixed(0)}ms`);
 
-		// 10. PR generation (stage 2) with retry if returned description is too short
-		const generatePRContent = async () => {
-			const completion = await cerebras.chat.completions.create({
-				model: "gpt-oss-120b",
-				messages: [
-					{
-						role: "system",
-						content: buildPRFromDiffs(language, safeCompare),
-					},
-					{
-						role: "user",
-						content: `File diffs summary: ${diffSummaries}`,
-					},
-				],
-				response_format: {
-					type: "json_schema",
-					json_schema: {
-						name: "json",
-						schema: {
-							title: "",
-							description: "",
+		// 10. PR generation (stage 2) — streamed via SSE
+		return createSSEResponse(async (send) => {
+			async function streamGeneration(): Promise<string> {
+				const completion = await cerebras.chat.completions.create({
+					model: "gpt-oss-120b",
+					messages: [
+						{
+							role: "system",
+							content: buildPRFromDiffs(language, safeCompare),
+						},
+						{
+							role: "user",
+							content: `File diffs summary: ${diffSummaries}`,
+						},
+					],
+					response_format: {
+						type: "json_schema",
+						json_schema: {
+							name: "json",
+							schema: { title: "", description: "" },
 						},
 					},
-				},
-			});
+					stream: true,
+				});
 
-			const content = (completion as { choices: { message: { content: string | null } }[] }).choices[0].message.content;
-			if (!content) throw new Error("Empty AI response");
-			return JSON.parse(content) as IPRResponse;
-		};
-
-		// First attempt
-		const t4 = performance.now();
-		let parsed = await generatePRContent();
-		const t5 = performance.now();
-		console.log(`[DEEP] PR generation (Cerebras): ${(t5 - t4).toFixed(0)}ms`);
-
-		// Retry if description is too short
-		if (parsed.description.length < MIN_DESCRIPTION_LENGTH) {
-			console.log(`[DEEP] Description too short (${parsed.description.length} chars), retrying...`);
-			const t6 = performance.now();
-			parsed = await generatePRContent();
-			console.log(`[DEEP] PR generation retry (Cerebras): ${(performance.now() - t6).toFixed(0)}ms`);
-
-			// If still too short after retry, throw error (no credit consumed yet)
-			if (parsed.description.length < MIN_DESCRIPTION_LENGTH) {
-				throw new UnprocessableEntityError(
-					"AI generated a description that was too short. Please try again.",
-				);
+				return streamCerebrasTokens(completion, send);
 			}
-		}
 
-		// 11. Success - now consume weekly rate limit credit
-		const weeklyLimit = await aiLimiterPerWeek.limit(weeklyLimitKey);
+			// First attempt
+			const t4 = performance.now();
+			let rawJson = await streamGeneration();
+			console.log(
+				`[DEEP] PR generation streamed (Cerebras): ${(performance.now() - t4).toFixed(0)}ms`,
+			);
 
-		// 12. Response
-		const response: IPRResponse = { ...parsed };
+			let parsed = JSON.parse(rawJson) as IPRResponse;
 
-		if (user.id === owner.userId) {
-			response.rateLimit = {
-				weeklyRemaining: weeklyLimit.remaining,
-				weeklyReset: weeklyLimit.reset,
-			};
-		}
+			// Retry if description is too short
+			if (parsed.description.length < MIN_DESCRIPTION_LENGTH) {
+				console.log(
+					`[DEEP] Description too short (${parsed.description.length} chars), retrying...`,
+				);
+				send("retry", {});
 
-		console.log(`[DEEP] Total: ${(performance.now() - t0).toFixed(0)}ms`);
-		return NextResponse.json(response);
+				const t6 = performance.now();
+				rawJson = await streamGeneration();
+				console.log(
+					`[DEEP] PR generation retry streamed: ${(performance.now() - t6).toFixed(0)}ms`,
+				);
+
+				parsed = JSON.parse(rawJson) as IPRResponse;
+
+				if (parsed.description.length < MIN_DESCRIPTION_LENGTH) {
+					send("error", {
+						message:
+							"AI generated a description that was too short. Please try again.",
+					});
+					return;
+				}
+			}
+
+			// 11. Success — consume weekly rate limit credit
+			const weeklyLimit =
+				await aiLimiterPerWeek.limit(weeklyLimitKey);
+
+			const response: IPRResponse = { ...parsed };
+			if (user.id === owner.userId) {
+				response.rateLimit = {
+					weeklyRemaining: weeklyLimit.remaining,
+					weeklyReset: weeklyLimit.reset,
+				};
+			}
+
+			console.log(
+				`[DEEP] Total: ${(performance.now() - t0).toFixed(0)}ms`,
+			);
+			send("done", response);
+		}, "[DEEP]");
 	} catch (error) {
 		return handleError(error);
 	}

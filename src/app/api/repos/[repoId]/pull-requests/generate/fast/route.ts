@@ -5,6 +5,7 @@ import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { cerebras } from "@/lib/server/ai/client";
 import { buildPRFromCommits } from "@/lib/server/ai/prompt";
+import { createSSEResponse, streamCerebrasTokens } from "@/lib/server/ai/streamSSE";
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -13,6 +14,8 @@ import {
 } from "@/lib/server/error";
 import { getCommitMessages } from "@/lib/server/github/commits";
 import { handleError } from "@/lib/server/handleError";
+import { redis } from "@/lib/server/redis/client";
+import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import {
 	aiLimiterPerMinute,
@@ -22,6 +25,8 @@ import {
 import { getCurrentUser } from "@/lib/server/session";
 import { formatDateTimeForErrors } from "@/lib/utils/formatDateTime";
 import type { IPRResponse } from "@/types/pullRequests";
+
+export const dynamic = "force-dynamic";
 
 const prisma = getPrisma();
 
@@ -73,20 +78,41 @@ export async function POST(
 			throw new ForbiddenError("You are not a member of this repository");
 		}
 
-		// 6. GitHub rate limit
-		const ghLimit = await githubCompareCommitsLimiter.limit(
-			`github:compare:user:${user.id}`,
-		);
-		rateLimitOrThrow(ghLimit);
+		// 6. Fetch commit messages (try prefetch cache first, fall back to GitHub)
+		const cacheKey = buildCompareCacheKey(repoId, safeBase, safeCompare);
 
-		// 7. Fetch commit messages
-		const commits = await getCommitMessages(
-			repo.installation.installationId,
-			repo.owner,
-			repo.name,
-			safeBase,
-			safeCompare,
-		);
+		let commits: string[] | undefined;
+		let cacheHit = false;
+
+		try {
+			const cached = await redis.get<string>(cacheKey);
+			if (cached) {
+				const data = JSON.parse(typeof cached === "string" ? cached : JSON.stringify(cached));
+				if (data.commits?.length) {
+					commits = data.commits;
+					cacheHit = true;
+				}
+			}
+		} catch {
+			// Cache read failed — fall through to GitHub
+		}
+
+		if (!commits) {
+			const ghLimit = await githubCompareCommitsLimiter.limit(
+				`github:compare:user:${user.id}`,
+			);
+			rateLimitOrThrow(ghLimit);
+
+			commits = await getCommitMessages(
+				repo.installation.installationId,
+				repo.owner,
+				repo.name,
+				safeBase,
+				safeCompare,
+			);
+		}
+
+		console.log(`[FAST] Commits: ${cacheHit ? "cache hit" : "GitHub fetch"} (${commits.length} commits)`);
 
 		if (!commits.length) {
 			throw new BadRequestError("No commits found between branches");
@@ -128,49 +154,53 @@ export async function POST(
 			);
 		}
 
-		// 10. AI call
-		const completion = await cerebras.chat.completions.create({
-			model: "gpt-oss-120b",
-			messages: [
-				{
-					role: "system",
-					content: buildPRFromCommits(language, safeCompare),
-				},
-				{
-					role: "user",
-					content: commits.map((c, i) => `${i + 1}. ${c}`).join("\n"),
-				},
-			],
-			response_format: {
-				type: "json_schema",
-				json_schema: {
-					name: "json",
-					schema: {
-						title: "",
-						description: "",
+		// 10. PR generation — streamed via SSE
+		return createSSEResponse(async (send) => {
+			const t0 = performance.now();
+			const completion = await cerebras.chat.completions.create({
+				model: "gpt-oss-120b",
+				messages: [
+					{
+						role: "system",
+						content: buildPRFromCommits(language, safeCompare),
+					},
+					{
+						role: "user",
+						content: commits
+							.map((c, i) => `${i + 1}. ${c}`)
+							.join("\n"),
+					},
+				],
+				response_format: {
+					type: "json_schema",
+					json_schema: {
+						name: "json",
+						schema: { title: "", description: "" },
 					},
 				},
-			},
-		});
+				stream: true,
+			});
 
-		const content = (completion as { choices: { message: { content: string | null } }[] }).choices[0].message.content;
-		if (!content) throw new Error("Empty AI response");
+			const accumulated = await streamCerebrasTokens(completion, send);
+			console.log(
+				`[FAST] PR generation streamed (Cerebras): ${(performance.now() - t0).toFixed(0)}ms`,
+			);
 
-		const parsed = JSON.parse(content);
+			const parsed = JSON.parse(accumulated) as IPRResponse;
 
-		// 11. Success - now consume weekly rate limit credit
-		const weeklyLimit = await aiLimiterPerWeek.limit(weeklyLimitKey);
+			// Success — consume weekly rate limit credit
+			const weeklyLimit = await aiLimiterPerWeek.limit(weeklyLimitKey);
 
-		// 12. Response
-		const response: IPRResponse = { ...parsed };
-		if (user.id === owner.userId) {
-			response.rateLimit = {
-				weeklyRemaining: weeklyLimit.remaining,
-				weeklyReset: weeklyLimit.reset,
-			};
-		}
+			const response: IPRResponse = { ...parsed };
+			if (user.id === owner.userId) {
+				response.rateLimit = {
+					weeklyRemaining: weeklyLimit.remaining,
+					weeklyReset: weeklyLimit.reset,
+				};
+			}
 
-		return NextResponse.json(response);
+			send("done", response);
+		}, "[FAST]");
 	} catch (error) {
 		return handleError(error);
 	}
