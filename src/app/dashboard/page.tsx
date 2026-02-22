@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle, Clock, Github, GitPullRequest } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AnimatedOpacity from "@/components/animations/AnimatedOpacity";
 import AnimatedScale from "@/components/animations/AnimatedScale";
 import AnimatedSlide from "@/components/animations/AnimatedSlide";
@@ -17,6 +17,7 @@ import GithubAppButton from "@/components/GithubAppButton";
 import { DashboardPRListItem, DashboardRepoListItem } from "@/components/ListItem";
 import { useInstallations } from "@/contexts/InstallationContext";
 import { useRepos } from "@/contexts/ReposContext";
+import { usePrefetchRepos } from "@/hooks/usePrefetchRepos";
 import { config } from "@/lib/client/config";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import firstCharUpperCase from "@/lib/utils/firstCharUpperCase";
@@ -87,6 +88,10 @@ export default function DashboardPage() {
 				b.draftPrCount + b.sentPrCount - (a.draftPrCount + a.sentPrCount),
 		)
 		.slice(0, 3);
+
+	// Prefetch top repos into store so navigation is instant
+	const topRepoIds = useMemo(() => topRepos.map((r) => r.id), [topRepos]);
+	usePrefetchRepos(topRepoIds);
 
 	// Compute total sent and draft PRs
 	const totalDraftPrs = repositories.reduce(
