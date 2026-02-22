@@ -37,8 +37,8 @@ import { useRepos } from "@/contexts/ReposContext";
 import { useFetchPRs } from "@/hooks/useFetchPRs";
 import { usePullRequestActions } from "@/hooks/usePullRequestActions";
 import { useRepository } from "@/hooks/useRepository";
-import firstCharUpperCase from "@/lib/utils/firstCharUpperCase";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import firstCharUpperCase from "@/lib/utils/firstCharUpperCase";
 import { useRepoStore } from "@/stores/repoStore";
 
 export default function RepositoryPage() {
