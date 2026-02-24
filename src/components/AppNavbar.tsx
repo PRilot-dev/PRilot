@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence } from "framer-motion";
 import {
 	ChevronDown,
 	CirclePlus,
@@ -9,7 +8,6 @@ import {
 	Gitlab,
 	Home,
 	Menu,
-	Settings,
 	X,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,11 +19,10 @@ import { useRepos } from "@/contexts/ReposContext";
 import { config } from "@/lib/client/config";
 import firstCharUpperCase from "@/lib/utils/firstCharUpperCase";
 import type { IInvitation } from "@/types/repos";
-import AnimatedSlide from "./animations/AnimatedSlide";
 import GithubAppButton from "./GithubAppButton";
-import LogoutButton from "./LogoutButton";
+import NavbarMobileMenu from "./NavbarMobileMenu";
+import NavbarUserButton from "./NavbarUserButton";
 import { PendingInviteModal } from "./PendingInviteModal";
-import ThemeSwitcher from "./ThemeSwitcher";
 
 export default function AppNavbar() {
 	const pathname = usePathname();
@@ -63,12 +60,8 @@ export default function AppNavbar() {
 	}, [pathname]);
 
 	// Provider installations
-	const githubInstall = installations.find(
-		(inst) => inst.provider === "github",
-	);
-	const gitlabInstall = installations.find(
-		(inst) => inst.provider === "gitlab",
-	);
+	const githubInstall = installations.find((i) => i.provider === "github");
+	const gitlabInstall = installations.find((i) => i.provider === "gitlab");
 
 	// Repos by provider & role
 	const githubOwned = repositories.filter(
@@ -95,7 +88,6 @@ export default function AppNavbar() {
 	const gitlabRepoCount =
 		gitlabOwned.length + gitlabMemberRepos.length + gitlabPendingInvites.length;
 
-	// Shared repo list renderer
 	const renderRepoList = (
 		provider: "github" | "gitlab",
 		install: boolean,
@@ -104,7 +96,6 @@ export default function AppNavbar() {
 		pendingInvites: typeof invitations,
 	) => (
 		<div className="py-2 min-w-56 max-h-80 overflow-y-auto hide-scrollbar">
-			{/* No installation */}
 			{!install && provider === "github" && (
 				<div className="px-3 py-2">
 					<GithubAppButton
@@ -127,14 +118,12 @@ export default function AppNavbar() {
 				</div>
 			)}
 
-			{/* Installed but no repos */}
 			{install && owned.length === 0 && memberRepos.length === 0 && (
 				<p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
 					Connected, but no repos found
 				</p>
 			)}
 
-			{/* Owned repos */}
 			{owned.length > 0 && (
 				<>
 					<p className="px-3 pt-1 pb-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -158,7 +147,6 @@ export default function AppNavbar() {
 				</>
 			)}
 
-			{/* Member / Invited repos */}
 			{(memberRepos.length > 0 || pendingInvites.length > 0) && (
 				<>
 					<p className="px-3 pt-2 pb-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -185,7 +173,7 @@ export default function AppNavbar() {
 							type="button"
 							onClick={() => {
 								setGithubOpen(false);
-								setSelectedInvitation(inv)
+								setSelectedInvitation(inv);
 							}}
 							className="flex items-center gap-2 w-full pl-6 pr-3 py-1.5 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
 						>
@@ -200,7 +188,7 @@ export default function AppNavbar() {
 
 	return (
 		<>
-			<nav className="fixed top-0 left-0 right-0 z-50 border-b  border-gray-300/70 dark:border-gray-800 backdrop-blur-md bg-white/80 dark:bg-zinc-950/80 shadow-sm">
+			<nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-300/70 dark:border-gray-800 backdrop-blur-md bg-white/80 dark:bg-zinc-950/80 shadow-sm">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex items-center justify-between h-16">
 						{/* Left: Logo */}
@@ -211,11 +199,11 @@ export default function AppNavbar() {
 							PRilot
 						</Link>
 
-						{/* Center: nav items */}
+						{/* Center: Dashboard + GitHub + GitLab */}
 						<div className="hidden md:flex items-center gap-1">
 							<Link
 								href="/dashboard"
-								className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+								className={`md:ml-16 flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
 									pathname === "/dashboard"
 										? "text-blue-600 dark:text-blue-400"
 										: "text-gray-600 dark:text-gray-400"
@@ -223,18 +211,6 @@ export default function AppNavbar() {
 							>
 								<Home size={16} />
 								Dashboard
-							</Link>
-
-							<Link
-								href="/dashboard/settings"
-								className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
-									pathname === "/dashboard/settings"
-										? "text-blue-600 dark:text-blue-400"
-										: "text-gray-600 dark:text-gray-400"
-								}`}
-							>
-								<Settings size={16} />
-								Settings
 							</Link>
 
 							{/* GitHub dropdown */}
@@ -318,97 +294,39 @@ export default function AppNavbar() {
 							</div>
 						</div>
 
-						{/* Right: theme + logout */}
-						<div className="hidden md:flex items-center gap-4">
-							<ThemeSwitcher className="bg-gray-200/90 dark:bg-gray-800 hover:bg-gray-300 hover:dark:bg-gray-700" />
-							<LogoutButton />
+						{/* Right: User button with dropdown */}
+						<div className="hidden md:flex items-center">
+							<NavbarUserButton
+								onOpen={() => {
+									setGithubOpen(false);
+									setGitlabOpen(false);
+								}}
+							/>
 						</div>
 
-						{/* Mobile: theme + hamburger */}
+						{/* Mobile: hamburger */}
 						<div className="flex md:hidden items-center gap-3">
-							<ThemeSwitcher className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 hover:dark:bg-gray-700" />
 							<button
 								type="button"
 								onClick={() => setMobileOpen(!mobileOpen)}
 								className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
 							>
-								{mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+								{mobileOpen ? (
+									<X className="w-5 h-5" />
+								) : (
+									<Menu className="w-5 h-5" />
+								)}
 							</button>
 						</div>
 					</div>
-
 				</div>
 			</nav>
 
-			{/* Mobile menu - full screen slide from right */}
-			<AnimatePresence>
-				{mobileOpen && (
-					<AnimatedSlide key="mobile-menu" x={400} damping={14} mass={0.7} className="md:hidden fixed right-0 top-16 bottom-0 w-full bg-white dark:bg-zinc-950 z-40 overflow-y-auto">
-					<div className="flex flex-col gap-6 px-4 py-8 min-h-full">
-							<Link
-								href="/dashboard"
-								onClick={() => setMobileOpen(false)}
-								className={`flex items-center gap-4 py-4 rounded-lg text-lg font-medium transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
-									pathname === "/dashboard"
-										? "text-blue-600 dark:text-blue-400"
-										: "text-gray-600 dark:text-gray-400"
-								}`}
-							>
-								<Home size={24} />
-								Dashboard
-							</Link>
-
-							<Link
-								href="/dashboard/settings"
-								onClick={() => setMobileOpen(false)}
-								className={`flex items-center gap-4 rounded-lg text-lg font-medium transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
-									pathname === "/dashboard/settings"
-										? "text-blue-600 dark:text-blue-400"
-										: "text-gray-600 dark:text-gray-400"
-								}`}
-							>
-								<Settings size={24} />
-								Settings
-							</Link>
-
-							{/* GitHub section */}
-							<div className="pt-4 mt-2 border-t border-gray-200 dark:border-gray-800">
-								<p className="flex items-center gap-3 py-2 text-base font-semibold text-gray-800 dark:text-gray-200">
-									<Github size={20} />
-									GitHub
-								</p>
-								{renderRepoList(
-									"github",
-									!!githubInstall,
-									githubOwned,
-									githubMemberRepos,
-									githubPendingInvites,
-								)}
-							</div>
-
-							{/* GitLab section */}
-							<div className="pt-4 mt-2 border-y border-gray-200 dark:border-gray-800">
-								<p className="flex items-center gap-3 py-2 text-base font-semibold text-gray-800 dark:text-gray-200">
-									<Gitlab size={20} />
-									GitLab
-								</p>
-								{renderRepoList(
-									"gitlab",
-									!!gitlabInstall,
-									gitlabOwned,
-									gitlabMemberRepos,
-									gitlabPendingInvites,
-								)}
-							</div>
-
-							{/* Logout in mobile menu */}
-							<div className="flex items-center mx-auto pt-4 mt-2">
-								<LogoutButton variant="icon" size={20} showText />
-							</div>
-						</div>
-					</AnimatedSlide>
-				)}
-			</AnimatePresence>
+			<NavbarMobileMenu
+				isOpen={mobileOpen}
+				onClose={() => setMobileOpen(false)}
+				onInvitationSelect={setSelectedInvitation}
+			/>
 
 			<PendingInviteModal
 				isOpen={!!selectedInvitation}
