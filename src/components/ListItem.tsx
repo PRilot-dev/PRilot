@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, GitPullRequest, Send, Trash2 } from "lucide-react";
+import { ArrowRight, Edit, GitPullRequest, Send, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import firstCharUpperCase from "@/lib/utils/firstCharUpperCase";
@@ -8,10 +8,10 @@ import { formatDateTime } from "@/lib/utils/formatDateTime";
 import type { Member } from "@/types/members";
 import AnimatedScale from "./animations/AnimatedScale";
 
-// ------------------------------
-// ------ Simple List item ------
-// ------------------------------
-type DashboardListItemProps = {
+// ------------------------------------
+// ------ Dashboard PR List item ------
+// ------------------------------------
+type DashboardPRListItemProps = {
 	title: string;
 	subtitle: string;
 	badge?: string;
@@ -22,7 +22,7 @@ type DashboardListItemProps = {
 	prId?: string;
 };
 
-export function DashboardListItem({
+export function DashboardPRListItem({
 	title,
 	subtitle,
 	badge,
@@ -31,7 +31,7 @@ export function DashboardListItem({
 	providerUrl,
 	repoId,
 	prId,
-}: DashboardListItemProps) {
+}: DashboardPRListItemProps) {
 	return (
 		<AnimatedScale
 			scale={0.9}
@@ -88,24 +88,63 @@ export function DashboardListItem({
 	);
 }
 
-// ------------------------------
-// ---- Link wrapper version ----
-// ------------------------------
-type DashboardListItemLinkProps = DashboardListItemProps & {
-	href: string;
+// -----------------------------------------
+// ------ Dashboard Repo List item ---------
+// -----------------------------------------
+type DashboardRepoListItemProps = {
+	repoId: string;
+	name: string;
+	provider: string;
+	draftPrCount: number;
+	sentPrCount: number;
 };
 
-export function DashboardListItemLink({
-	href,
-	...props
-}: DashboardListItemLinkProps) {
+export function DashboardRepoListItem({
+	repoId,
+	name,
+	provider,
+	draftPrCount,
+	sentPrCount,
+}: DashboardRepoListItemProps) {
 	return (
-		<Link href={href} className="block">
-			<DashboardListItem
-				{...props}
-				className="hover:bg-white dark:hover:bg-gray-800 transition-colors"
-			/>
-		</Link>
+		<AnimatedScale
+			scale={0.9}
+			triggerOnView={false}
+			className="flex items-center justify-between gap-4 h-18 px-3 py-2 rounded-lg
+				border border-gray-200 dark:border-gray-700/70
+				bg-gray-100/60 dark:bg-zinc-950/90"
+		>
+			<div className="flex flex-col justify-between h-full w-0 flex-1 py-1">
+				<div className="flex items-center gap-2">
+					<Link
+						href={`/dashboard/repo/${repoId}`}
+						className="text-sm text-gray-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+					>
+						{firstCharUpperCase(name)}
+					</Link>
+					<Badge className="text-xs">{provider}</Badge>
+				</div>
+				<p className="text-xs text-gray-500 dark:text-gray-400">
+					{draftPrCount} drafts • {sentPrCount} PRs sent
+				</p>
+			</div>
+			<div className="flex flex-col items-end pt-0.5">
+				<Link
+					href={`/dashboard/repo/${repoId}`}
+					className="flex items-center gap-1.5 px-3 py-1 text-xs text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+				>
+					Open repo
+					<ArrowRight size={12} />
+				</Link>
+				<Link
+					href={`/dashboard/repo/${repoId}/pr/new`}
+					className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
+				>
+					<Sparkles size={14} />
+					New PR
+				</Link>
+			</div>
+		</AnimatedScale>
 	);
 }
 

@@ -39,7 +39,7 @@ export default function PREditorPageContent({
 	const [compareBranch, setCompareBranch] = useState("");
 
 	const [language, setLanguage] = useState<PRLanguage>("English");
-	const [mode, setMode] = useState<"fast" | "deep">("fast");
+	const [mode, setMode] = useState<"fast" | "deep">("deep");
 	const [isModalOpen, setIsModalOpen] = useState(false);
 
 	const [title, setTitle] = useState<string | undefined>();
@@ -125,6 +125,7 @@ export default function PREditorPageContent({
 			// Set authoritative final values (overrides streaming partials)
 			setTitle(generatedTitle);
 			setDescription(generatedDescription);
+			toast.success("✨ PR successfully generated.")
 		} else {
 			// Revert preview if generation failed
 			setShowEditOrPreview("edit");

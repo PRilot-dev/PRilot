@@ -16,6 +16,7 @@ export function usePullRequestActions(repoId: string) {
 	const { updateGlobalDraftPrCount, updateGlobalSentPrCount } = useRepos();
 	const repo = useRepoStore((s) => s.repos[repoId]);
 	const updateDraftPrCount = useRepoStore((s) => s.updateDraftPrCount);
+	const updateSentPrCount = useRepoStore((s) => s.updateSentPrCount);
 
 	// ---- Add a PR ----
 	const addDraftPR = async (payload: CreatePRPayload) => {
@@ -34,8 +35,6 @@ export function usePullRequestActions(repoId: string) {
 
 		updateDraftPrCount(repoId, +1);				// Update local repo draft PR count
 		updateGlobalDraftPrCount(repoId, +1); // Update local repos (dashboard) draft PR count
-
-		toast.success("Pull request created ✨");
 
 		return res.json();
 	};
@@ -56,10 +55,17 @@ export function usePullRequestActions(repoId: string) {
 		updateDraftPrCount(repo.id, -1); // Update local repo draft PR count
 
 		updateGlobalDraftPrCount(repoId, -1); // Update local repos (dashboard) draft PR count
-		updateGlobalSentPrCount(repoId, +1);  // Update local repos (dashboard) sent PR count
 
 		toast.success("Pull request deleted 🗑️");
 	};
 
-	return { addDraftPR, deleteDraftPR };
+	// ---- Mark a PR as sent (update counts) ----
+	const addSentPR = () => {
+		updateDraftPrCount(repoId, -1);
+		updateSentPrCount(repoId, +1);
+		updateGlobalDraftPrCount(repoId, -1);
+		updateGlobalSentPrCount(repoId, +1);
+	};
+
+	return { addDraftPR, deleteDraftPR, addSentPR };
 }

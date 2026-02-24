@@ -1,6 +1,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
+import { usePullRequestActions } from "@/hooks/usePullRequestActions";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { useRepoStore } from "@/stores/repoStore";
 
@@ -9,8 +10,7 @@ export function useSendPR(repoId: string, prId: string | null) {
 	const [isSendingPr, setIsSendingPr] = useState(false);
 	const [providerPrUrl, setProviderPrUrl] = useState<string | null>(null);
 
-	const updateDraftPrCount = useRepoStore((s) => s.updateDraftPrCount);
-	const updateSentPrCount = useRepoStore((s) => s.updateSentPrCount);
+	const { addSentPR } = usePullRequestActions(repoId);
 	const setRepoDisconnected = useRepoStore((s) => s.setRepoDisconnected);
 
 	const sendPR = useCallback(async () => {
@@ -29,9 +29,7 @@ export function useSendPR(repoId: string, prId: string | null) {
 				const data: { url: string } = await res.json();
 				setProviderPrUrl(data.url);
 
-				// Update local PR counts
-				updateDraftPrCount(repoId, -1);
-				updateSentPrCount(repoId, +1);
+				addSentPR();
 				return;
 			}
 
@@ -58,8 +56,7 @@ export function useSendPR(repoId: string, prId: string | null) {
 	}, [
 		repoId,
 		prId,
-		updateDraftPrCount,
-		updateSentPrCount,
+		addSentPR,
 		setRepoDisconnected,
 		router,
 	]);
