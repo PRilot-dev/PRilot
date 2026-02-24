@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { usePullRequestActions } from "@/hooks/usePullRequestActions";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { parsePartialPRJson } from "@/lib/utils/parsePartialPRJson";
+import { useCreditsStore } from "@/stores/creditsStore";
 
 interface GeneratePRResponse {
 	title: string;
@@ -39,6 +40,7 @@ export function useGeneratePR({
 	setPrId,
 }: useGeneratePRProps) {
 	const { addDraftPR } = usePullRequestActions(repoId ?? "");
+	const { setCredits, decrementCredits } = useCreditsStore();
 
 	const [isGenerating, setIsGenerating] = useState(false);
 	const abortControllerRef = useRef<AbortController | null>(null);
@@ -178,7 +180,18 @@ export function useGeneratePR({
 				if (!updateRes.ok) throw new Error("Failed to update PR");
 			}
 
-			return { success: true, title, description: safeDescription };
+			// Sync credits: use exact value from API if owner, otherwise decrement locally
+		if (finalResult.rateLimit) {
+			setCredits({
+				remaining: finalResult.rateLimit.weeklyRemaining,
+				total: 20,
+				reset: finalResult.rateLimit.weeklyReset,
+			});
+		} else {
+			decrementCredits();
+		}
+
+		return { success: true, title, description: safeDescription };
 		} catch (err) {
 			if ((err as Error).name === "AbortError") {
 				return { success: false };
@@ -192,7 +205,7 @@ export function useGeneratePR({
 				abortControllerRef.current = null;
 			}
 		}
-	}, [repoId, addDraftPR, baseBranch, compareBranch, mode, language, prId, setPrId]);
+	}, [repoId, addDraftPR, baseBranch, compareBranch, mode, language, prId, setPrId, setCredits, decrementCredits]);
 
 	return { isGenerating, generatePR, streamingTitle, streamingDescription };
 }
