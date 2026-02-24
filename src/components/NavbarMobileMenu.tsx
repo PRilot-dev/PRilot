@@ -10,6 +10,7 @@ import {
 	Home,
 	Scale,
 	Settings,
+	ShieldCheck,
 	Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -275,12 +276,21 @@ export default function NavbarMobileMenu({
 							</Link>
 
 							<Link
-								href="/legal"
+								href="/privacy"
+								onClick={onClose}
+								className="flex items-center gap-4 px-2 py-3 rounded-lg text-base font-medium text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+							>
+								<ShieldCheck size={20} />
+								Privacy Policy
+							</Link>
+
+							<Link
+								href="/terms"
 								onClick={onClose}
 								className="flex items-center gap-4 px-2 py-3 rounded-lg text-base font-medium text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
 							>
 								<Scale size={20} />
-								Legal
+								Terms of Service
 							</Link>
 
 							<div className="flex items-center mx-auto pt-4 mt-2">

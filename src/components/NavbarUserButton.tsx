@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronDown, Scale, Settings, Zap } from "lucide-react";
+import { BookOpen, ChevronDown, Scale, Settings, ShieldCheck, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
@@ -132,14 +132,24 @@ export default function NavbarUserButton({ onOpen }: NavbarUserButtonProps) {
 						Documentation
 					</Link>
 
-					{/* Legal */}
+					{/* Privacy */}
 					<Link
-						href="/legal"
+						href="/privacy"
+						onClick={() => setOpen(false)}
+						className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+					>
+						<ShieldCheck size={15} />
+						Privacy Policy
+					</Link>
+
+					{/* Terms */}
+					<Link
+						href="/terms"
 						onClick={() => setOpen(false)}
 						className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
 					>
 						<Scale size={15} />
-						Legal
+						Terms of Service
 					</Link>
 
 					<div className="border-t border-gray-100 dark:border-gray-800 my-1" />

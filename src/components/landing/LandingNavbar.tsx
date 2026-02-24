@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { BookOpen, Menu, Scale, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import AnimatedSlide from "@/components/animations/AnimatedSlide";
@@ -120,6 +120,34 @@ export default function LandingNavbar() {
 									{link.label}
 								</a>
 							))}
+
+							<div className="border-t border-gray-200 dark:border-gray-800 my-2" />
+
+							<Link
+								href="/docs"
+								onClick={() => setMobileOpen(false)}
+								className="flex items-center gap-3 px-4 py-4 text-lg font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 hover:dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
+							>
+								<BookOpen size={18} />
+								Documentation
+							</Link>
+							<Link
+								href="/privacy"
+								onClick={() => setMobileOpen(false)}
+								className="flex items-center gap-3 px-4 py-4 text-lg font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 hover:dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
+							>
+								<ShieldCheck size={18} />
+								Privacy Policy
+							</Link>
+							<Link
+								href="/terms"
+								onClick={() => setMobileOpen(false)}
+								className="flex items-center gap-3 px-4 py-4 text-lg font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 hover:dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
+							>
+								<Scale size={18} />
+								Terms of Service
+							</Link>
+
 							<div className="pt-4 mt-2 px-4">
 								<LandingCTA animated={false} />
 							</div>
