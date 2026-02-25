@@ -5,6 +5,7 @@ import sanitizeHtml from "sanitize-html";
 import z from "zod";
 import { getPrisma } from "@/db";
 import { config } from "@/lib/server/config";
+import { BadRequestError, UnauthorizedError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
 import {
 	generateAccessToken,
@@ -37,20 +38,14 @@ export async function POST(req: Request) {
 		});
 		const { code, state } = await bodySchema.parseAsync(await req.json());
 		if (!code || !state) {
-			return NextResponse.json({
-				success: false,
-				message: "Missing code or state",
-			});
+			throw new BadRequestError("Missing code or state");
 		}
 
 		// 2. Validate CSRF state against cookie
 		const cookieStore = await cookies();
 		const storedState = cookieStore.get("github_oauth_state")?.value;
 		if (!storedState || storedState !== state) {
-			return NextResponse.json(
-				{ success: false, message: "Invalid OAuth state" },
-				{ status: 403 },
-			);
+			throw new BadRequestError("Invalid OAuth state");
 		}
 
 		// 3. Exchange code for GitHub access token
@@ -69,10 +64,7 @@ export async function POST(req: Request) {
 		);
 		const tokenData = (await tokenRes.json()) as GitHubTokenResponse;
 		if (!tokenData.access_token) {
-			return NextResponse.json({
-				success: false,
-				message: "Failed to get access token",
-			});
+			throw new UnauthorizedError("Failed to get access token");
 		}
 
 		// 4. Fetch GitHub user profile
@@ -89,10 +81,7 @@ export async function POST(req: Request) {
 			});
 
 			if (!ghEmailsRes.ok) {
-				return NextResponse.json({
-					success: false,
-					message: "Failed to fetch GitHub emails",
-				});
+				throw new UnauthorizedError("Failed to fetch GitHub emails");
 			}
 
 			const emailsData = await ghEmailsRes.json();
@@ -103,10 +92,7 @@ export async function POST(req: Request) {
 			)?.email;
 
 			if (!primaryEmail) {
-				return NextResponse.json({
-					success: false,
-					message: "No verified GitHub email found",
-				});
+				throw new UnauthorizedError("No verified GitHub email found");
 			}
 
 			email = primaryEmail;
@@ -114,10 +100,7 @@ export async function POST(req: Request) {
 
 		// 6. Validate essential GitHub user info
 		if (!ghUser.id || !ghUser.login || !email) {
-			return NextResponse.json({
-				success: false,
-				message: "Failed to get GitHub user info",
-			});
+			throw new UnauthorizedError("Failed to get GitHub user info");
 		}
 
 		// 7. Find or create user
