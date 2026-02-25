@@ -88,7 +88,7 @@ export function setTokensInCookies(
 	res.cookies.set("accessToken", accessToken, {
 		httpOnly: true,
 		maxAge: ACCESS_TOKEN_DURATION_IN_MS / 1000,
-		sameSite: isProd ? "none" : "lax",
+		sameSite: "lax",
 		secure: isProd,
 		path: "/",
 	});
@@ -96,7 +96,7 @@ export function setTokensInCookies(
 	res.cookies.set("refreshToken", refreshToken, {
 		httpOnly: true,
 		maxAge: REFRESH_TOKEN_DURATION_IN_MS / 1000,
-		sameSite: isProd ? "none" : "lax",
+		sameSite: "lax",
 		secure: isProd,
 		path: "/",
 	});
