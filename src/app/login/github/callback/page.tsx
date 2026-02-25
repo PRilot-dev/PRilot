@@ -18,17 +18,18 @@ export default function ConnectGitHubLoading() {
 
 		const connectGitHub = async () => {
 			try {
-				// Extract code from URL
+				// Extract code and state from URL
 				const params = new URLSearchParams(window.location.search);
 				const code = params.get("code");
-				if (!code)
+				const state = params.get("state");
+				if (!code || !state)
 					throw new Error("GitHub login failed, please try again later.");
 
 				// Call backend to exchange code for token and get user info
 				const res = await fetch("/api/auth/github/callback", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ code }),
+					body: JSON.stringify({ code, state }),
 				});
 
 				// Parse response
