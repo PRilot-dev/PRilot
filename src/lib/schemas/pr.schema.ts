@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const languageSchema = z.enum([
+	"English",
+	"French",
+	"Spanish",
+	"German",
+	"Portuguese",
+	"Italian",
+]);
+
 // Pull Request database item creation schema
 export const createPrSchema = z.object({
 	prTitle: z
@@ -23,9 +32,7 @@ export const createPrSchema = z.object({
 		.min(1, "Head branch is required")
 		.regex(/^[\w./-]+$/, "Invalid branch name"),
 
-	language: z
-		.enum(["English", "French", "Spanish", "German", "Portuguese", "Italian"])
-		.default("English"),
+	language: languageSchema.default("English"),
 
 	mode: z.enum(["fast", "deep"]).default("fast"),
 });
@@ -55,9 +62,7 @@ export const updatePrSchema = z.object({
 		.regex(/^[\w./-]+$/, "Invalid branch name")
 		.optional(),
 
-	language: z
-		.enum(["English", "French", "Spanish", "German", "Portuguese", "Italian"])
-		.optional(),
+	language: languageSchema.optional(),
 
 	mode: z.enum(["fast", "deep"]).optional(),
 });

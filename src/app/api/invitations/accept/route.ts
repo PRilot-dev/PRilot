@@ -42,25 +42,25 @@ export async function POST(req: Request) {
 			);
 		}
 
-		// 6. Create repository membership
-		await prisma.repositoryMember.create({
-			data: {
-				repositoryId: invitation.repositoryId,
-				userId: user.id,
-				role: "member",
-			},
-		});
+		// 6. Create membership and update invitation atomically
+		await prisma.$transaction([
+			prisma.repositoryMember.create({
+				data: {
+					repositoryId: invitation.repositoryId,
+					userId: user.id,
+					role: "member",
+				},
+			}),
+			prisma.invitation.update({
+				where: { id: invitation.id },
+				data: {
+					status: "accepted",
+					acceptedAt: new Date(),
+				},
+			}),
+		]);
 
-		// 7. Update invitation status
-		await prisma.invitation.update({
-			where: { id: invitation.id },
-			data: {
-				status: "accepted",
-				acceptedAt: new Date(),
-			},
-		});
-
-		// 8. Notify repo owner
+		// 7. Notify repo owner
 		const ownerMember = await prisma.repositoryMember.findFirst({
 			where: {
 				repositoryId: invitation.repositoryId,
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 			});
 		}
 
-		// 9. Return success
+		// 8. Return success
 		return NextResponse.json({ success: true });
 	} catch (error) {
 		return handleError(error);
