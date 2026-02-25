@@ -156,6 +156,7 @@ export async function DELETE(
 		const repo = await prisma.repository.findFirst({
 			where: { id: repoId },
 			select: {
+				status: true,
 				name: true,
 				installation: {
 					select: {
