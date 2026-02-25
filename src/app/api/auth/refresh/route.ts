@@ -8,7 +8,7 @@ import { generateAccessToken, generateRefreshToken, setTokensInCookies } from "@
 
 const prisma = getPrisma();
 
-export async function GET() {
+export async function POST() {
   try {
     // 1. Get refresh token from cookies
     const cookieStore = await cookies();

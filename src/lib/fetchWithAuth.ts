@@ -14,6 +14,7 @@ export async function fetchWithAuth(
 	// If we get a 401, try refreshing the token
 	if (response.status === 401) {
 		const refreshResponse = await fetch("/api/auth/refresh", {
+			method: "POST",
 			credentials: "include",
 		});
 
