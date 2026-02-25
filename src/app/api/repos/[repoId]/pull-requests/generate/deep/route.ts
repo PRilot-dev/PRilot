@@ -3,6 +3,7 @@ import sanitizeHtml from "sanitize-html";
 import { getPrisma } from "@/db";
 import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
+import { languageSchema } from "@/lib/schemas/pr.schema";
 import { cerebras } from "@/lib/server/ai/client";
 import { buildPRFromDiffs } from "@/lib/server/ai/prompt";
 import { createSSEResponse, streamCerebrasTokens } from "@/lib/server/ai/streamSSE";
@@ -50,7 +51,7 @@ export async function POST(
 		const body = await req.json();
 		const baseBranch = await branchSchema.parseAsync(body.baseBranch);
 		const compareBranch = await branchSchema.parseAsync(body.compareBranch);
-		const language = body.language;
+		const language = await languageSchema.default("English").parseAsync(body.language);
 
 		const safeBase = sanitizeHtml(baseBranch);
 		const safeCompare = sanitizeHtml(compareBranch);
