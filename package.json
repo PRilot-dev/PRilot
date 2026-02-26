@@ -21,7 +21,7 @@
     "@upstash/redis": "^1.36.1",
     "argon2": "^0.44.0",
     "cookie": "^1.1.1",
-    "jsonwebtoken": "^9.0.3",
+    "jose": "^6.1.3",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.562.0",
     "motion": "^12.26.2",
@@ -41,7 +41,6 @@
     "@biomejs/biome": "2.2.0",
     "@prisma/adapter-pg": "^7.3.0",
     "@tailwindcss/postcss": "^4",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -54,7 +53,7 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
-    "hono": "^4.11.4",
+    "hono": "^4.12.2",
     "diff": "^8.0.3",
     "lodash": "^4.17.23"
   }
