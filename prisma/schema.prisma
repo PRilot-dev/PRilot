@@ -119,7 +119,6 @@ model ProviderInstallation {
   repositories   Repository[]
 
   @@unique([provider, installationId])
-  @@unique([provider, createdById])
   @@index([createdById])
 }
 
