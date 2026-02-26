@@ -197,8 +197,7 @@ export default function DashboardPage() {
 								appName={config.github.appName}
 								className="items-center"
 								redirectUri={`${config.frontendUrl}/github/callback`}
-								connected={hasGithub}
-								variant="settings"
+								label={hasGithub ? "Authorize repositories" : undefined}
 							/>
 						</CardContent>
 					</Card>

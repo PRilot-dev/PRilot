@@ -60,8 +60,8 @@ export default function AppNavbar() {
 	}, [pathname]);
 
 	// Provider installations
-	const githubInstall = installations.find((i) => i.provider === "github");
-	const gitlabInstall = installations.find((i) => i.provider === "gitlab");
+	const hasGithubInstall = installations.some((i) => i.provider === "github");
+	const hasGitlabInstall = installations.some((i) => i.provider === "gitlab");
 
 	// Repos by provider & role
 	const githubOwned = repositories.filter(
@@ -183,6 +183,16 @@ export default function AppNavbar() {
 					))}
 				</>
 			)}
+
+			{install && provider === "github" && (
+				<div className="px-3 pt-2 border-t border-gray-200 dark:border-gray-800 mt-2">
+					<GithubAppButton
+						appName={config.github.appName}
+						redirectUri={`${config.frontendUrl}/github/callback`}
+						label="Add another account"
+					/>
+				</div>
+			)}
 		</div>
 	);
 
@@ -244,7 +254,7 @@ export default function AppNavbar() {
 									<div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-[#09090B] border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg">
 										{renderRepoList(
 											"github",
-											!!githubInstall,
+											hasGithubInstall,
 											githubOwned,
 											githubMemberRepos,
 											githubPendingInvites,
@@ -284,7 +294,7 @@ export default function AppNavbar() {
 									<div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-[#09090B] border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg">
 										{renderRepoList(
 											"gitlab",
-											!!gitlabInstall,
+											hasGitlabInstall,
 											gitlabOwned,
 											gitlabMemberRepos,
 											gitlabPendingInvites,

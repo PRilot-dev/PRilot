@@ -32,13 +32,22 @@ export default function GitHubCallbackPage() {
 
 				if (!res.ok) {
 					const data = await res.json();
-					throw new Error(data.message || "Failed to register GitHub installation");
+					if (res.status === 409) {
+						throw new Error(
+							data.error || "This installation is already linked to another account",
+						);
+					}
+					throw new Error(data.error || "Failed to register GitHub installation");
 				}
 
 				toast.success("GitHub installation successful! ✨");
 			} catch (error) {
 				console.error(error);
-				toast.error("Failed to register GitHub installation");
+				toast.error(
+					error instanceof Error
+						? error.message
+						: "Failed to register GitHub installation",
+				);
 			} finally {
 				router.push("/dashboard");
 			}

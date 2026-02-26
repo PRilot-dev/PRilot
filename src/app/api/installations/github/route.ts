@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
-import { getPrisma, Provider } from "@/db";
-import { BadRequestError, UnauthorizedError } from "@/lib/server/error";
+import { getPrisma, Provider, type ProviderInstallation } from "@/db";
+import {
+	BadRequestError,
+	ConflictError,
+	UnauthorizedError,
+} from "@/lib/server/error";
 import { verifyInstallation } from "@/lib/server/github/app";
 import { githubFetch } from "@/lib/server/github/client";
 import type {
@@ -8,9 +12,9 @@ import type {
 	IGitHubReposResponse,
 } from "@/lib/server/github/types";
 import { handleError } from "@/lib/server/handleError";
-import { getCurrentUser } from "@/lib/server/session";
-import { githubInstallLimiter } from "@/lib/server/redis/rate-limiters";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
+import { githubInstallLimiter } from "@/lib/server/redis/rate-limiters";
+import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
 
@@ -39,27 +43,44 @@ export async function POST(req: Request) {
 		// 4. Verify installation via GitHub
 		const installation = await verifyInstallation(installationId);
 
-		// 5. Upsert installation in DB
-		const dbInstallation = await prisma.providerInstallation.upsert({
+		// 5. Find or create installation in DB (keyed on installationId, not user)
+		const existing = await prisma.providerInstallation.findUnique({
 			where: {
-				provider_createdById: {
+				provider_installationId: {
 					provider: "github",
-					createdById: user.id,
+					installationId,
 				},
 			},
-			update: {
-				installationId,
-				accountLogin: installation.account.login,
-				accountType: installation.account.type.toLowerCase(),
-			},
-			create: {
-				provider: "github",
-				installationId,
-				accountLogin: installation.account.login,
-				accountType: installation.account.type.toLowerCase(),
-				createdById: user.id,
-			},
 		});
+
+		let dbInstallation: ProviderInstallation;
+
+		if (existing) {
+			if (existing.createdById !== user.id) {
+				throw new ConflictError(
+					"This GitHub installation is already linked to another account",
+				);
+			}
+
+			// Same user re-installing or modifying repos — update
+			dbInstallation = await prisma.providerInstallation.update({
+				where: { id: existing.id },
+				data: {
+					accountLogin: installation.account.login,
+					accountType: installation.account.type.toLowerCase(),
+				},
+			});
+		} else {
+			dbInstallation = await prisma.providerInstallation.create({
+				data: {
+					provider: "github",
+					installationId,
+					accountLogin: installation.account.login,
+					accountType: installation.account.type.toLowerCase(),
+					createdById: user.id,
+				},
+			});
+		}
 
 		// 6. Fetch repos from GitHub
 		const reposList = await githubFetch<IGitHubReposResponse>(

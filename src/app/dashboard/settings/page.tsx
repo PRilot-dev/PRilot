@@ -35,7 +35,7 @@ export default function UserSettingsPage() {
 		user.oauthProviders?.includes("gitlab" as IOAuthProvider) ?? false;
 
 	// Check installations
-	const githubInstalled = installations.some((i) => i.provider === "github");
+	const githubInstalls = installations.filter((i) => i.provider === "github");
 	const gitlabInstalled = installations.some((i) => i.provider === "gitlab");
 
 	return (
@@ -110,7 +110,10 @@ export default function UserSettingsPage() {
 								</CardDescription>
 								<div className="flex gap-3">
 									<span
-										className={`inline-flex items-center gap-2 px-3 h-10 rounded-lg border text-sm ${githubOAuth ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400" : "border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400"}`}
+										className={`inline-flex items-center gap-2 px-3 h-10 rounded-lg border text-sm 
+											${githubOAuth ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400" 
+												: "bg-gray-100 dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400"
+											}`}
 									>
 										<Github size={16} />
 										GitHub
@@ -121,7 +124,10 @@ export default function UserSettingsPage() {
 										)}
 									</span>
 									<span
-										className={`inline-flex items-center gap-2 px-3 h-10 rounded-lg border text-sm ${gitlabOAuth ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400" : "border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400"}`}
+										className={`inline-flex items-center gap-2 px-3 h-10 rounded-lg border text-sm 
+											${gitlabOAuth ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400" 
+												: "bg-gray-100 dark:bg-gray-950 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400"
+											}`}
 									>
 										<Gitlab size={16} />
 										GitLab
@@ -147,13 +153,48 @@ export default function UserSettingsPage() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-3 grid lg:grid-cols-2 gap-4 lg:gap-0 mt-4">
-							<GithubAppButton
-								appName={config.github.appName}
-								redirectUri={`${config.frontendUrl}/github/callback`}
-								variant="settings"
-								connected={githubInstalled}
-								className="lg:pr-8 lg:border-r border-gray-500"
-							/>
+							<div className="flex flex-col gap-4 lg:pr-8 lg:border-r border-gray-500">
+								<div className="flex items-center gap-3">
+									<Github />
+									<span>GitHub</span>
+								</div>
+
+								{githubInstalls.length > 0 ? (
+									<>
+										{githubInstalls.map((inst) => (
+											<div
+												key={inst.id}
+												className="flex items-center justify-between px-4 py-2 h-10 gap-2 bg-gray-100 dark:bg-gray-950 
+												rounded-lg border border-gray-200 dark:border-none dark:outline dark:outline-gray-800"
+											>
+												<span className="text-sm text-gray-700 dark:text-gray-300">
+													{inst.accountLogin}
+													<span className="ml-2 text-xs text-gray-400">
+														({inst.accountType})
+													</span>
+												</span>
+												<span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+													<CircleCheck size={14} />
+													Connected
+												</span>
+											</div>
+										))}
+										<div className="pl-4">
+											<GithubAppButton
+												appName={config.github.appName}
+												redirectUri={`${config.frontendUrl}/github/callback`}
+												label="Add another account"
+											/>
+										</div>
+									</>
+								) : (
+									<GithubAppButton
+										appName={config.github.appName}
+										redirectUri={`${config.frontendUrl}/github/callback`}
+										variant="settings"
+									/>
+								)}
+							</div>
 							<ConnectButton
 								providerName="GitLab"
 								connected={gitlabInstalled}

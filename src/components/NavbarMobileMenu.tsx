@@ -51,8 +51,8 @@ export default function NavbarMobileMenu({
 		fetchCredits();
 	}, [isOpen, fetchCredits]);
 
-	const githubInstall = installations.find((i) => i.provider === "github");
-	const gitlabInstall = installations.find((i) => i.provider === "gitlab");
+	const hasGithubInstall = installations.some((i) => i.provider === "github");
+	const hasGitlabInstall = installations.some((i) => i.provider === "gitlab");
 
 	const githubOwned = repositories.filter(
 		(r) => r.provider === "github" && r.userRole === "owner",
@@ -166,6 +166,16 @@ export default function NavbarMobileMenu({
 					))}
 				</>
 			)}
+
+			{install && provider === "github" && (
+				<div className="px-3 pt-2 border-t border-gray-200 dark:border-gray-800 mt-2">
+					<GithubAppButton
+						appName={config.github.appName}
+						redirectUri={`${config.frontendUrl}/github/callback`}
+						label="Add another account"
+					/>
+				</div>
+			)}
 		</div>
 	);
 
@@ -201,7 +211,7 @@ export default function NavbarMobileMenu({
 							</p>
 							{renderRepoList(
 								"github",
-								!!githubInstall,
+								hasGithubInstall,
 								githubOwned,
 								githubMemberRepos,
 								githubPendingInvites,
@@ -216,7 +226,7 @@ export default function NavbarMobileMenu({
 							</p>
 							{renderRepoList(
 								"gitlab",
-								!!gitlabInstall,
+								hasGitlabInstall,
 								gitlabOwned,
 								gitlabMemberRepos,
 								gitlabPendingInvites,
