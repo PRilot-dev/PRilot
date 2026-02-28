@@ -156,7 +156,7 @@ export default function SignupPage() {
 
 					<div>
 						<label
-							htmlFor="email"
+							htmlFor="username"
 							className="block mb-1 text-gray-700 dark:text-gray-300 font-medium"
 						>
 							Username
