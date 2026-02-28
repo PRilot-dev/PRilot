@@ -9,6 +9,8 @@ const PUBLIC_API_ROUTES = [
   "/api/auth/github/start",
   "/api/auth/github/callback",
   "/api/auth/refresh",
+  "/api/auth/email-code/send",
+  "/api/auth/email-code/verify",
 ];
 
 let encodedSecret: Uint8Array | null = null;

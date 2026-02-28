@@ -33,6 +33,17 @@ export const resetPasswordLimiter = new Ratelimit({
 	limiter: Ratelimit.fixedWindow(5, "10 m"),
 });
 
+// Email code (passwordless)
+export const emailCodeSendLimiter = new Ratelimit({
+	redis,
+	limiter: Ratelimit.fixedWindow(5, "10 m"),
+});
+
+export const emailCodeVerifyLimiter = new Ratelimit({
+	redis,
+	limiter: Ratelimit.fixedWindow(10, "10 m"),
+});
+
 // Refresh Token
 export const refreshLimiter = new Ratelimit({
 	redis,

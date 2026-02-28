@@ -1,0 +1,50 @@
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+import { emailSchema } from "@/lib/schemas/email.schema";
+import { handleError } from "@/lib/server/handleError";
+import { getClientIp } from "@/lib/server/ip";
+import { redis } from "@/lib/server/redis/client";
+import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
+import { emailCodeSendLimiter } from "@/lib/server/redis/rate-limiters";
+import { sendVerificationCodeEmail } from "@/lib/server/resend/emails/verificationCode";
+
+const SUCCESS_MESSAGE = "If this email is valid, a code has been sent.";
+const CODE_TTL_SECONDS = 600; // 10 minutes
+
+export async function POST(req: Request) {
+	try {
+		// 1. Rate limit by IP
+		const ip = getClientIp(req);
+		const ipLimit = await emailCodeSendLimiter.limit(
+			`auth:email-code:send:ip:${ip}`,
+		);
+		rateLimitOrThrow(ipLimit);
+
+		// 2. Validate body
+		const { email } = await emailSchema.parseAsync(await req.json());
+
+		// 3. Rate limit by email
+		const emailLimit = await emailCodeSendLimiter.limit(
+			`auth:email-code:send:email:${email}`,
+		);
+		rateLimitOrThrow(emailLimit);
+
+		// 4. Generate 6-digit code and hash it
+		const code = crypto.randomInt(100_000, 1_000_000).toString();
+		const hash = crypto.createHash("sha256").update(code).digest("hex");
+
+		// 5. Store hashed code in Redis with attempt counter
+		await redis.set(
+			`auth:email-code:${email}`,
+			JSON.stringify({ hash, attempts: 0 }),
+			{ ex: CODE_TTL_SECONDS },
+		);
+
+		// 6. Send email
+		await sendVerificationCodeEmail({ to: email, code });
+
+		return NextResponse.json({ message: SUCCESS_MESSAGE });
+	} catch (error) {
+		return handleError(error);
+	}
+}
