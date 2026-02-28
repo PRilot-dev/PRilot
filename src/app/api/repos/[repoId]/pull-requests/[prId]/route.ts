@@ -62,8 +62,9 @@ export async function GET(
 			throw new ForbiddenError("Not your PR");
 		}
 
-		// 7. Return PR
-		return NextResponse.json(pr);
+		// 7. Return PR (strip nested repository/member data)
+		const { repository: _repo, ...prData } = pr;
+		return NextResponse.json(prData);
 	} catch (error) {
 		return handleError(error);
 	}

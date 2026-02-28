@@ -124,7 +124,7 @@ export async function POST(
 		const changedFiles = files.filter((f) => f.status !== "deleted");
 		if (changedFiles.length > 30) {
 			throw new BadRequestError(
-				"Too many files have changes, maximum is 30 for deep mode. Please us fast mode instead.",
+				"Too many files have changes, maximum is 30 for deep mode. Please use fast mode instead.",
 			);
 		}
 

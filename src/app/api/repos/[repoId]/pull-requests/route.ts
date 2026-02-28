@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getPrisma, type Prisma, type PullRequestStatus } from "@/db";
+import { z } from "zod";
+import { getPrisma, type Prisma } from "@/db";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { NotFoundError, UnauthorizedError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
@@ -21,14 +22,17 @@ export async function GET(
 		// 2. Get pagination query
 		const url = new URL(_req.url);
 		const page = Math.max(parseInt(url.searchParams.get("page") ?? "1", 10), 1);
-		const perPage = Math.max(
-			parseInt(url.searchParams.get("per_page") ?? "10", 10),
-			1,
+		const perPage = Math.min(
+			Math.max(parseInt(url.searchParams.get("per_page") ?? "10", 10), 1),
+			100,
 		);
 		const skip = (page - 1) * perPage;
 
-		// 3. Get filter from query
-		const statusFilter = url.searchParams.get("status");
+		// 3. Get and validate status filter
+		const statusParam = url.searchParams.get("status");
+		const statusFilter = statusParam
+			? z.enum(["draft", "sent", "all"]).catch("all").parse(statusParam)
+			: null;
 
 		// 4. Check repo for membership
 		const repo = await prisma.repository.findUnique({
@@ -47,7 +51,7 @@ export async function GET(
 
 		const prFilter: Prisma.PullRequestWhereInput =
 			statusFilter && statusFilter !== "all"
-				? { ...baseFilter, status: statusFilter as PullRequestStatus }
+				? { ...baseFilter, status: statusFilter }
 				: baseFilter;
 
 		// 6. Fetch PRs with pagination
