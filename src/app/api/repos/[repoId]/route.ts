@@ -78,17 +78,14 @@ export async function GET(
 			}
 		}
 
-		// 7. Global PR counts
-		const prFilter =
-			userRole === "owner"
-				? { repositoryId: repo.id }
-				: { repositoryId: repo.id, createdById: user.id };
+		// 7. Global PR counts (scoped to current user)
+		const prFilter = { repositoryId: repo.id, createdById: user.id };
 		const [draftPrCount, sentPrCount] = await Promise.all([
 			prisma.pullRequest.count({
-				where: { ...prFilter, status: "draft", createdById: user.id },
+				where: { ...prFilter, status: "draft" },
 			}),
 			prisma.pullRequest.count({
-				where: { ...prFilter, status: "sent", createdById: user.id },
+				where: { ...prFilter, status: "sent" },
 			}),
 		]);
 
