@@ -6,7 +6,6 @@ const PUBLIC_API_ROUTES = [
   "/api/auth/login",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
-  "/api/auth/password",
   "/api/auth/github/start",
   "/api/auth/github/callback",
   "/api/auth/refresh",

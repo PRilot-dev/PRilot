@@ -3,17 +3,27 @@ import { getPrisma } from "@/db";
 import { resetPasswordSchema } from "@/lib/schemas/auth.schema";
 import { BadRequestError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
+import { getClientIp } from "@/lib/server/ip";
 import { hashPassword } from "@/lib/server/password";
+import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
+import { resetPasswordLimiter } from "@/lib/server/redis/rate-limiters";
 
 const prisma = getPrisma();
 
 export async function POST(req: Request) {
 	try {
-		// 1. Validate body
+		// 1. Rate limit by IP
+		const ip = getClientIp(req);
+		const limit = await resetPasswordLimiter.limit(
+			`auth:reset-password:ip:${ip}`,
+		);
+		rateLimitOrThrow(limit);
+
+		// 2. Validate body
 		const { token, password, confirmPassword } =
 			await resetPasswordSchema.parseAsync(await req.json());
 
-		// 2. Find token
+		// 3. Find token
 		const resetToken = await prisma.passwordResetToken.findUnique({
 			where: { token },
 		});
@@ -22,7 +32,7 @@ export async function POST(req: Request) {
 			throw new BadRequestError("Invalid or expired reset link");
 		}
 
-		// 3. Check expiration
+		// 4. Check expiration
 		if (resetToken.expiresAt < new Date()) {
 			await prisma.passwordResetToken.delete({
 				where: { id: resetToken.id },
@@ -30,19 +40,19 @@ export async function POST(req: Request) {
 			throw new BadRequestError("Invalid or expired reset link");
 		}
 
-		// 4. Check passwords match
+		// 5. Check passwords match
 		if (password !== confirmPassword) {
 			throw new BadRequestError("Passwords do not match");
 		}
 
-		// 5. Hash and update password
+		// 6. Hash and update password
 		const hashedPassword = await hashPassword(password);
 		await prisma.user.update({
 			where: { id: resetToken.userId },
 			data: { password: hashedPassword },
 		});
 
-		// 6. Delete used token
+		// 7. Delete used token
 		await prisma.passwordResetToken.delete({
 			where: { id: resetToken.id },
 		});
