@@ -35,6 +35,11 @@ export async function POST() {
       path: "/",
     });
 
+    response.cookies.set("github_oauth_state", "", {
+      maxAge: 0,
+      path: "/",
+    });
+
     return response;
   } catch (error) {
     return handleError(error);
