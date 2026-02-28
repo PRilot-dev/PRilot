@@ -257,6 +257,20 @@ export default function SignupPage() {
 										Verifying...
 									</p>
 								)}
+								<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+									Didn&apos;t receive the sign-in code?{" "}
+									<button
+										type="button"
+										onClick={(e) => {
+											setCode("");
+											handleSendCode(e);
+										}}
+										disabled={loading}
+										className="text-blue-600 dark:text-blue-400 hover:underline hover:cursor-pointer disabled:opacity-50"
+									>
+										Send a new code
+									</button>
+								</p>
 								<button
 									type="button"
 									onClick={() => {
