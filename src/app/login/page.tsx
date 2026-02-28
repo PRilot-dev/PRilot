@@ -2,40 +2,37 @@
 
 import { Gitlab, Mail } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 import z from "zod";
 import GithubButton from "@/components/GithubButton";
 import LoginSkeleton from "@/components/LoginSkeleton";
 import OtpInput from "@/components/OtpInput";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
-import { useUser } from "@/contexts/UserContext";
+import { useAuth } from "@/hooks/useAuth";
 import { passwordValidationSchema } from "@/lib/schemas/auth.schema";
 
-type AuthMode = "password" | "code";
-
 export default function LoginPage() {
-	const router = useRouter();
-	const searchParams = useSearchParams();
-	const { user, setUser, loading: userLoading } = useUser();
-	const [loading, setLoading] = useState(false);
-	const [email, setEmail] = useState("");
+	const {
+		email,
+		setEmail,
+		mode,
+		setMode,
+		code,
+		setCode,
+		codeSent,
+		loading,
+		setLoading,
+		user,
+		userLoading,
+		setUser,
+		router,
+		handleSendCode,
+		handleVerifyCode,
+		resetCode,
+	} = useAuth();
+
 	const [password, setPassword] = useState("");
-
-	// Email code state
-	const [mode, setMode] = useState<AuthMode>(
-		searchParams.get("mode") === "password" ? "password" : "code",
-	);
-	const [codeSent, setCodeSent] = useState(false);
-	const [code, setCode] = useState("");
-
-	// Route guard
-	useEffect(() => {
-		if (!userLoading && user) {
-			router.replace("/dashboard");
-		}
-	}, [userLoading, user, router]);
 
 	// Password login
 	const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -73,68 +70,6 @@ export default function LoginPage() {
 				toast.error("An unexpected error occurred");
 				console.error(err);
 			}
-			setLoading(false);
-		}
-	};
-
-	// Send email code
-	const handleSendCode = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setLoading(true);
-
-		try {
-			const res = await fetch("/api/auth/email-code/send", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email }),
-			});
-
-			const data = await res.json();
-
-			if (!res.ok) {
-				toast.error(data.error || "Failed to send code");
-				setLoading(false);
-				return;
-			}
-
-			setCodeSent(true);
-			toast.success("Code sent! Check your email.");
-		} catch {
-			toast.error("An unexpected error occurred");
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	// Verify email code (triggered automatically when 6 digits entered)
-	const handleVerifyCode = async (fullCode: string) => {
-		if (loading) return;
-		setLoading(true);
-
-		try {
-			const res = await fetch("/api/auth/email-code/verify", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email, code: fullCode }),
-				credentials: "include",
-			});
-
-			const data = await res.json();
-
-			if (!res.ok) {
-				toast.error(data.error || "Verification failed");
-				setCode("");
-				setLoading(false);
-				return;
-			}
-
-			setUser(data.user);
-			router.push("/dashboard");
-			toast.success("Welcome!");
-		} catch {
-			toast.error("An unexpected error occurred");
-			setCode("");
-		} finally {
 			setLoading(false);
 		}
 	};
@@ -305,10 +240,7 @@ export default function LoginPage() {
 								</p>
 								<button
 									type="button"
-									onClick={() => {
-										setCodeSent(false);
-										setCode("");
-									}}
+									onClick={resetCode}
 									className="text-sm text-gray-500 dark:text-gray-400 hover:underline hover:cursor-pointer"
 								>
 									Use a different email
@@ -319,8 +251,7 @@ export default function LoginPage() {
 							type="button"
 							onClick={() => {
 								setMode("password");
-								setCodeSent(false);
-								setCode("");
+								resetCode();
 							}}
 							className="mt-4 text-sm text-blue-600 dark:text-blue-400 hover:underline hover:cursor-pointer"
 						>
