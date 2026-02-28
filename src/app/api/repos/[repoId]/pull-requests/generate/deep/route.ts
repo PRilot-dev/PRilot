@@ -17,7 +17,7 @@ import {
 import { getFileDiffs } from "@/lib/server/github/fileDiffs";
 import { handleError } from "@/lib/server/handleError";
 import { redis } from "@/lib/server/redis/client";
-import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
+import { buildCompareCacheKey, buildSummaryCacheKey } from "@/lib/server/redis/compareCacheKey";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import {
 	aiLimiterPerMinute,
@@ -164,11 +164,33 @@ export async function POST(
 			);
 		}
 
-		// 9. Summarize diffs (stage 1)
+		// 9. Summarize diffs (stage 1) — cached to avoid re-summarizing on repeated generations
 		const t2 = performance.now();
-		const diffSummaries = await summarizeDiffsForPR(files);
+		const summaryCacheKey = buildSummaryCacheKey(repoId, safeBase, safeCompare);
+		let diffSummaries: string | null = null;
+		let summaryCacheHit = false;
+
+		try {
+			const cachedSummary = await redis.get<string>(summaryCacheKey);
+			if (cachedSummary) {
+				diffSummaries = typeof cachedSummary === "string" ? cachedSummary : JSON.stringify(cachedSummary);
+				summaryCacheHit = true;
+			}
+		} catch {
+			// Cache read failed — fall through to AI summarization
+		}
+
+		if (!diffSummaries) {
+			diffSummaries = await summarizeDiffsForPR(files);
+			try {
+				await redis.set(summaryCacheKey, diffSummaries, { ex: 180 });
+			} catch {
+				// Cache write failed — non-blocking, continue
+			}
+		}
+
 		const t3 = performance.now();
-		console.log(`[DEEP] Summarize diffs (Cerebras): ${(t3 - t2).toFixed(0)}ms`);
+		console.log(`[DEEP] Summarize diffs: ${(t3 - t2).toFixed(0)}ms (${summaryCacheHit ? "cache hit" : "Cerebras"})`);
 
 		// 10. PR generation (stage 2) — streamed via SSE
 		return createSSEResponse(async (send) => {
