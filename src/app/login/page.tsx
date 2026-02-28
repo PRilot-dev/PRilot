@@ -1,13 +1,15 @@
 "use client";
 
-import { Gitlab, Mail } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import z from "zod";
-import GithubButton from "@/components/GithubButton";
+import AuthTabs from "@/components/AuthTabs";
+import CodeVerification from "@/components/CodeVerification";
+import EmailCodeForm from "@/components/EmailCodeForm";
+import FormInput from "@/components/FormInput";
 import LoginSkeleton from "@/components/LoginSkeleton";
-import OtpInput from "@/components/OtpInput";
+import OAuthButtons from "@/components/OAuthButtons";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { useAuth } from "@/hooks/useAuth";
 import { passwordValidationSchema } from "@/lib/schemas/auth.schema";
@@ -34,7 +36,6 @@ export default function LoginPage() {
 
 	const [password, setPassword] = useState("");
 
-	// Password login
 	const handlePasswordSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setLoading(true);
@@ -74,7 +75,6 @@ export default function LoginPage() {
 		}
 	};
 
-	// Loading fallback
 	if (userLoading || user) return <LoginSkeleton />;
 
 	return (
@@ -90,22 +90,8 @@ export default function LoginPage() {
 				<h2 className="text-gray-700 dark:text-gray-300 mb-6">
 					Sign in to manage your repositories and PRs
 				</h2>
-				{mode === "password" && (
-					<section className="grid grid-cols-2 max-w-xs mx-auto rounded-xl mb-6 overflow-hidden border border-gray-200 dark:border-gray-700">
-						<Link
-							href="/login?mode=password"
-							className="bg-gray-200 dark:bg-gray-800 py-2 font-medium hover:bg-gray-300 dark:hover:bg-gray-700 transition"
-						>
-							Login
-						</Link>
-						<Link
-							href="/signup?mode=password"
-							className="bg-gray-200 dark:bg-gray-800 py-2 text-gray-500 dark:text-gray-400 font-medium hover:bg-gray-300 dark:hover:bg-gray-700 transition"
-						>
-							Register
-						</Link>
-					</section>
-				)}
+
+				{mode === "password" && <AuthTabs active="login" />}
 
 				{mode === "password" ? (
 					<>
@@ -113,40 +99,24 @@ export default function LoginPage() {
 							onSubmit={handlePasswordSubmit}
 							className="flex flex-col gap-4 text-left"
 						>
-							<div>
-								<label
-									htmlFor="email"
-									className="block mb-1 text-gray-700 dark:text-gray-300 font-medium"
-								>
-									Email
-								</label>
-								<input
-									id="email"
-									type="email"
-									placeholder="you@example.com"
-									value={email}
-									onChange={(e) => setEmail(e.target.value)}
-									required
-									className="w-full px-4 py-2 border rounded-xl border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-								/>
-							</div>
-							<div>
-								<label
-									htmlFor="password"
-									className="block mb-1 text-gray-700 dark:text-gray-300 font-medium"
-								>
-									Password
-								</label>
-								<input
-									id="password"
-									type="password"
-									placeholder="********"
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-									required
-									className="w-full px-4 py-2 border rounded-xl border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-								/>
-							</div>
+							<FormInput
+								id="email"
+								label="Email"
+								type="email"
+								placeholder="you@example.com"
+								value={email}
+								onChange={setEmail}
+								required
+							/>
+							<FormInput
+								id="password"
+								label="Password"
+								type="password"
+								placeholder="********"
+								value={password}
+								onChange={setPassword}
+								required
+							/>
 							<div className="flex justify-center">
 								<Link
 									href="/forgot-password"
@@ -174,78 +144,23 @@ export default function LoginPage() {
 				) : (
 					<>
 						{!codeSent ? (
-							<form
+							<EmailCodeForm
+								email={email}
+								setEmail={setEmail}
+								loading={loading}
 								onSubmit={handleSendCode}
-								className="flex flex-col gap-4 text-left"
-							>
-								<div>
-									<label
-										htmlFor="code-email"
-										className="block mb-1 text-gray-700 dark:text-gray-300 font-medium"
-									>
-										Email
-									</label>
-									<input
-										id="code-email"
-										type="email"
-										placeholder="you@example.com"
-										value={email}
-										onChange={(e) => setEmail(e.target.value)}
-										required
-										className="w-full px-4 py-2 border rounded-xl border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-									/>
-								</div>
-								<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-									We&apos;ll send a 6-digit code to your email.
-									{" "}If you don&apos;t have an account, one will be created for you.
-								</p>
-								<button
-									type="submit"
-									disabled={loading}
-									className="mt-2 w-full py-2 bg-blue-500 text-white rounded-xl font-semibold hover:cursor-pointer hover:bg-blue-600 disabled:opacity-50 transition flex items-center justify-center gap-2"
-								>
-									<Mail className="w-4 h-4" />
-									{loading ? "Sending..." : "Send code"}
-								</button>
-							</form>
+								description="We'll send a 6-digit code to your email. If you don't have an account, one will be created for you."
+							/>
 						) : (
-							<div className="flex flex-col gap-4">
-								<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-									Enter the 6-digit code sent to <strong>{email}</strong>
-								</p>
-								<OtpInput
-									value={code}
-									onChange={setCode}
-									onComplete={handleVerifyCode}
-									disabled={loading}
-								/>
-								{loading && (
-									<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-										Verifying...
-									</p>
-								)}
-								<p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-									Didn&apos;t receive the sign-in code?{" "}
-									<button
-										type="button"
-										onClick={(e) => {
-											setCode("");
-											handleSendCode(e);
-										}}
-										disabled={loading}
-										className="text-blue-600 dark:text-blue-400 hover:underline hover:cursor-pointer disabled:opacity-50"
-									>
-										Send a new code
-									</button>
-								</p>
-								<button
-									type="button"
-									onClick={resetCode}
-									className="text-sm text-gray-500 dark:text-gray-400 hover:underline hover:cursor-pointer"
-								>
-									Use a different email
-								</button>
-							</div>
+							<CodeVerification
+								email={email}
+								code={code}
+								setCode={setCode}
+								loading={loading}
+								onVerify={handleVerifyCode}
+								onResend={handleSendCode}
+								onChangeEmail={resetCode}
+							/>
 						)}
 						<button
 							type="button"
@@ -260,26 +175,7 @@ export default function LoginPage() {
 					</>
 				)}
 
-				<div className="my-4 flex items-center gap-2">
-					<span className="grow h-px bg-gray-300 dark:bg-gray-600"></span>
-					<span className="text-gray-500 dark:text-gray-400 text-sm">
-						or continue with
-					</span>
-					<span className="grow h-px bg-gray-300 dark:bg-gray-600"></span>
-				</div>
-				<div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 justify-center">
-					<GithubButton />
-					<button
-						type="button"
-						onClick={() => {
-							toast.info("GitLab auth isn't available yet.");
-						}}
-						className="flex w-full md:w-auto justify-center items-center gap-2 px-4 py-2 border border-gray-400 rounded-xl hover:cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-					>
-						<Gitlab className="w-5 h-5" />
-						GitLab
-					</button>
-				</div>
+				<OAuthButtons />
 			</div>
 		</div>
 	);
