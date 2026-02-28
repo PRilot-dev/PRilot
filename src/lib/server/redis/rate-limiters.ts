@@ -28,6 +28,11 @@ export const forgotPasswordLimiter = new Ratelimit({
 	limiter: Ratelimit.fixedWindow(3, "10 m"),
 });
 
+export const resetPasswordLimiter = new Ratelimit({
+	redis,
+	limiter: Ratelimit.fixedWindow(5, "10 m"),
+});
+
 // Refresh Token
 export const refreshLimiter = new Ratelimit({
 	redis,
