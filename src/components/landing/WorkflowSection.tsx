@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 
 export default function WorkflowSection() {
 	return (
-		<section className="py-20 bg-linear-to-b from-white to-slate-100 dark:from-[#13131d] dark:to-[#13131d]">
+		<section className="py-20 bg-linear-to-b from-gray-50/60 to-slate-50 dark:from-[#0d0d14] dark:to-[#13131d]">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<AnimatedOpacity>
 					<h2 className="text-4xl md:text-5xl text-center mb-4 text-gray-900 dark:text-white font-bold">
@@ -19,7 +19,7 @@ export default function WorkflowSection() {
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
 					{/* Without PRilot */}
 					<AnimatedSlide x={-30} triggerOnView amount={0.3}>
-						<Card className="p-6 shadow-lg! border-2 border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 h-full">
+						<Card className="p-6 shadow-lg! dark:shadow-none! border-2 border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/20 h-full">
 							<div className="flex items-center gap-3 mb-6">
 								<div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
 									<Clock className="w-6 h-6 text-red-500 dark:text-red-400" />
@@ -66,7 +66,7 @@ export default function WorkflowSection() {
 
 					{/* With PRilot */}
 					<AnimatedSlide x={30} triggerOnView amount={0.3}>
-						<Card className="p-6 shadow-lg! border-2 border-green-300 dark:border-green-700 bg-linear-to-br from-green-50/50 to-white dark:from-green-900/10 dark:to-gray-800/25 h-full">
+						<Card className="p-6 shadow-lg! dark:shadow-none! border-2 border-green-300 dark:border-green-700 bg-linear-to-br from-green-50/50 to-white dark:from-green-900/10 dark:to-gray-800/25 h-full">
 							<div className="flex items-center gap-3 mb-6">
 								<div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
 									<Zap className="w-6 h-6 text-green-600 dark:text-green-400" />

@@ -49,6 +49,14 @@ export default function LandingFooter() {
 									Example
 								</a>
 							</li>
+							<li>
+								<Link
+									href="/docs"
+									className="hover:text-gray-900 hover:dark:text-white transition-colors"
+								>
+									Docs
+								</Link>
+							</li>
 						</ul>
 					</div>
 

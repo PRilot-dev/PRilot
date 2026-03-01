@@ -22,10 +22,10 @@ const benefits = [
 const stats = [
 	{
 		icon: Clock,
-		value: "3 Hours Saved",
-		valueShort: "3 Hours Saved",
-		description: "Every week on average",
-		descriptionLong: "On average for each developer of a team",
+		value: "3+ Hours Saved",
+		valueShort: "3+ Hours Saved",
+		description: "Every month on average",
+		descriptionLong: "Per month for each developer of a team",
 		color: "blue",
 	},
 	{
@@ -36,8 +36,8 @@ const stats = [
 	},
 	{
 		icon: Zap,
-		value: "< 10 Seconds",
-		description: "Average Fast mode generation time",
+		value: "< 2 Seconds",
+		description: "Time it takes for PRilot to generate a PR",
 		color: "green",
 	},
 ];
@@ -80,7 +80,7 @@ export default function BenefitsSection() {
 
 				{/* Stats Cards */}
 				<AnimatedSlide x={30} triggerOnView amount={0.3}>
-					<div className="bg-white/30 dark:bg-gray-800/50 rounded-3xl flex flex-col justify-center gap-6 p-4 py-8 md:p-8 shadow-lg border border-gray-300/40 dark:border-gray-800/50">
+					<div className="bg-white/30 dark:bg-gray-800/50 rounded-3xl flex flex-col justify-center gap-6 p-4 py-8 md:p-8 shadow-lg dark:shadow-none border border-gray-300/40 dark:border-gray-800/50">
 						{stats.map((stat) => {
 							const Icon = stat.icon;
 							const isBlue = stat.color === "blue";

@@ -33,7 +33,7 @@ export function Modal({
 				initial={{ opacity: 0, scale: 0.5 }}
 				animate={{ opacity: 1, scale: 1 }}
 				exit={{ opacity: 0, scale: 0.5 }}
-				className={`relative z-10 w-full ${size === "md" ? "max-w-md" : "max-w-sm"} mx-2 rounded-xl bg-white dark:bg-zinc-950/90 border border-gray-200 dark:border-gray-800 p-6 shadow-lg`}
+				className={`relative z-10 w-full ${size === "md" ? "max-w-md" : "max-w-sm"} mx-2 rounded-xl bg-white dark:bg-zinc-950/95 border border-gray-200 dark:border-gray-800 p-6 shadow-lg`}
 			>
 				<div className="flex justify-between items-center mb-4">
 					<h2 className="text-xl font-semibold">{title}</h2>

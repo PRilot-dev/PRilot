@@ -57,7 +57,7 @@ Implements Stripe subscription payments with secure checkout sessions and webhoo
 export default function ExampleSection() {
 	const [showPreview, setShowPreview] = useState(true);
 	return (
-		<section id="example" className="py-20 bg-linear-to-b from-slate-100 to-slate-200/80 dark:from-[#13131d] dark:to-gray-950/50">
+		<section id="example" className="py-20 bg-linear-to-b from-slate-100 to-white dark:from-[#0A0A0D] dark:to-[#13131d]">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<AnimatedOpacity>
 					<h2 className="text-4xl md:text-5xl text-center mb-4 text-gray-900 dark:text-white font-bold">
@@ -72,7 +72,7 @@ export default function ExampleSection() {
 				<div className="flex flex-col gap-6 max-w-5xl mx-auto">
 					{/* Input panel */}
 					<AnimatedSlide x={-30} triggerOnView amount={0.3}>
-						<Card className="p-6 shadow-lg!">
+						<Card className="p-6 shadow-lg! dark:shadow-none!">
 							<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-4">
 								Input
 							</p>
@@ -121,7 +121,7 @@ export default function ExampleSection() {
 
 					{/* Output panel */}
 					<AnimatedSlide x={30} triggerOnView amount={0.2}>
-						<Card className="p-6 shadow-lg!">
+						<Card className="p-6 shadow-lg! dark:shadow-none!">
 							<div className="flex items-center justify-between mb-4">
 								<p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
 									Generated PR
@@ -168,7 +168,7 @@ export default function ExampleSection() {
 										</ReactMarkdown>
 									</div>
 								) : (
-									<pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono bg-gray-50 dark:bg-gray-900/50 p-4 rounded-md overflow-x-auto">
+									<pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono p-4 rounded-md overflow-x-auto">
 										{PR_DESCRIPTION}
 									</pre>
 								)}

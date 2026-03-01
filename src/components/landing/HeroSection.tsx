@@ -80,7 +80,7 @@ export default function HeroSection() {
 				{/* Hero Mockup — mirrors the real PR generation page */}
 				<AnimatedSlide y={40} triggerOnView={false}>
 					<div className="mt-16 max-w-5xl mx-auto">
-						<Card className="shadow-2xl! rounded-2xl! px-2! py-6 md:p-8! space-y-8">
+						<Card className="shadow-2xl! dark:shadow-none! rounded-2xl! px-2! py-6 md:p-8! space-y-8">
 							{/* Page title row */}
 							<div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
 								<div>
@@ -225,13 +225,13 @@ export default function HeroSection() {
 											</ReactMarkdown>
 										</div>
 									) : (
-										<pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono bg-gray-50 dark:bg-gray-900/50 p-4 rounded-md overflow-x-auto">
+										<pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono p-4 rounded-md overflow-x-auto">
 											{PR_DESCRIPTION}
 										</pre>
 									)}
 
 									{/* Fade-out gradient */}
-									<div className="absolute bottom-0 left-0 right-0 h-16 bg-linear-to-t from-white dark:from-[#1a1a2e] to-transparent pointer-events-none" />
+									<div className="absolute bottom-0 left-0 right-0 h-16 bg-linear-to-t from-white dark:from-[#181C28] to-transparent pointer-events-none" />
 								</div>
 							</div>
 

@@ -1,4 +1,5 @@
 import BenefitsSection from "@/components/landing/BenefitsSection";
+import ConsistencySection from "@/components/landing/ConsistencySection";
 import CTASection from "@/components/landing/CTASection";
 import ExampleSection from "@/components/landing/ExampleSection";
 import FAQSection from "@/components/landing/FAQSection";
@@ -18,6 +19,7 @@ export default function LandingPage() {
 			<BenefitsSection />
 			<HowItWorksSection />
 			<WorkflowSection />
+			<ConsistencySection />
 			<ExampleSection />
 			<FAQSection />
 			<CTASection />

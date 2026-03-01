@@ -29,7 +29,7 @@ const features = [
 		icon: GitBranch,
 		title: "Seamless Provider Integration",
 		description:
-			"Connect your GitHub or GitLab account and PRilot handles everything: fetching branch diffs, analyzing changes, and sending pull requests directly to your repository. No copy-pasting or fiddling required.",
+			"Connect your GitHub account and PRilot handles everything: fetching branch diffs, analyzing changes, and sending pull requests directly to your repository. GitLab support is coming soon.",
 		color: "green",
 	},
 ];
@@ -55,7 +55,7 @@ const colorClasses = {
 
 export default function FeaturesSection() {
 	return (
-		<section id="features" className="py-20 bg-white dark:bg-[#13131d]">
+		<section id="features" className="py-20 bg-linear-to-b from-white to-white/60 dark:from-[#13131d] dark:to-[#13131d]">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<AnimatedOpacity>
 					<h2 className="text-4xl md:text-5xl text-center mb-4 text-gray-900 dark:text-white font-bold">
@@ -79,7 +79,7 @@ export default function FeaturesSection() {
 								triggerOnView
 								amount={0.3}
 							>
-								<Card className="p-6 h-full hover:scale-[1.02] transition-transform shadow-lg!">
+								<Card className="p-6 h-full hover:scale-[1.02] transition-transform shadow-lg! dark:shadow-none!">
 									<div
 										className={`w-12 h-12 mb-4 rounded-xl ${colors.bg} flex items-center justify-center`}
 									>

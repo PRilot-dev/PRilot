@@ -51,6 +51,7 @@ export default function PREditorPageContent({
 	const startAutoSave = useRef(false); // To start auto saving PR in db when editing manually
 	const skipNextFetch = useRef(false); // To prevent fetching PR after generating one
 	const didRedirectRef = useRef(false); // To prevent duplicate branch-deleted redirects
+	const branchesInitialized = useRef(false); // To prevent branch reset on store updates
 
 	const editorRef = useRef<HTMLDivElement | null>(null);
 	const autoSaveFrameRef = useRef<number | null>(null);
@@ -143,9 +144,10 @@ export default function PREditorPageContent({
 	}, [generatePR]);
 
 	// ----- Effects -----
-	// Set default and compare branches
+	// Set default and compare branches (only once on initial load)
 	useEffect(() => {
-		if (!repo) return;
+		if (!repo || branchesInitialized.current) return;
+		branchesInitialized.current = true;
 		setBaseBranch(repo.defaultBranch);
 		setCompareBranch(
 			repo.branches.length > 1

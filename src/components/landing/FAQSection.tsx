@@ -43,7 +43,7 @@ const faqCategories: FAQCategory[] = [
 					"PRilot works with any programming language — it analyzes git diffs, not frameworks. Whether you're working with JavaScript, Python, Go, Rust, Java, or any other language, PRilot can understand your changes.",
 			},
 			{
-				question: "In which languages can Pull-Requests be generated?",
+				question: "In which languages can Pull Requests be generated?",
 				answer:
 					"Pull Request descriptions can be generated in:\n• English\n• French\n• Spanish\n• German\n• Italian\n• Portuguese",
 			},
@@ -80,7 +80,7 @@ const faqCategories: FAQCategory[] = [
 					"You can generate a Pull Request and send it directly to your provider (GitHub, GitLab soon) — or copy/paste it manually if you prefer.",
 			},
 			{
-				question: "Can I edit the generated Pull-request?",
+				question: "Can I edit the generated Pull Request?",
 				answer:
 					"Absolutely. You can fully edit the generated Pull Request before publishing. PRilot gives you a strong first draft — you stay in control.",
 			},
@@ -118,7 +118,7 @@ const faqCategories: FAQCategory[] = [
 			{
 				question: "Why should I pay for this?",
 				answer:
-					"If writing PR descriptions takes 5–10 minutes each, and you open dozens per month, that's hours saved. PRilot pays for itself in time saved and improved review quality.",
+					"If writing PR descriptions takes 10–15 minutes each, and you open dozens per month, that's hours saved. PRilot pays for itself in time saved and improved review quality.",
 			},
 		],
 	},
@@ -137,7 +137,7 @@ export default function FAQSection() {
 	return (
 		<section
 			id="faq"
-			className="min-h-screen py-20 bg-linear-to-b from-white to-slate-100/80 dark:from-gray-950 dark:to-[#13131d]"
+			className="min-h-screen py-20 bg-white dark:bg-[#0A0A0D]"
 		>
 			<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 				<AnimatedOpacity>
