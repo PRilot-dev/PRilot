@@ -32,7 +32,7 @@ export default function SignupPage() {
 		handleSendCode,
 		handleVerifyCode,
 		resetCode,
-	} = useAuth({ successMessage: "Welcome to PRilot!" });
+	} = useAuth();
 
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");

@@ -72,7 +72,11 @@ export async function POST(req: Request) {
 			include: { oauthIds: true },
 		});
 
+		let isNewUser = false;
+
 		if (!user) {
+			isNewUser = true;
+
 			// Derive username from email prefix
 			const baseUsername = email.split("@")[0];
 			let username = baseUsername;
@@ -99,6 +103,7 @@ export async function POST(req: Request) {
 		// 9. Create session
 		const response = NextResponse.json({
 			message: "Signed in successfully",
+			isNewUser,
 			user: { ...safeUser, oauthProviders },
 		});
 

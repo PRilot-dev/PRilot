@@ -7,11 +7,7 @@ import { useUser } from "@/contexts/UserContext";
 
 type AuthMode = "password" | "code";
 
-interface UseAuthOptions {
-	successMessage?: string;
-}
-
-export function useAuth({ successMessage = "Welcome back!" }: UseAuthOptions = {}) {
+export function useAuth() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { user, setUser, loading: userLoading } = useUser();
@@ -86,7 +82,7 @@ export function useAuth({ successMessage = "Welcome back!" }: UseAuthOptions = {
 
 			setUser(data.user);
 			router.push("/dashboard");
-			toast.success(successMessage);
+			toast.success(data.isNewUser ? "Welcome to PRilot!" : "Welcome back!");
 		} catch {
 			toast.error("An unexpected error occurred");
 			setCode("");
