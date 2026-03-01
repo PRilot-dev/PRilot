@@ -120,6 +120,7 @@ model ProviderInstallation {
 
   @@unique([provider, installationId])
   @@index([createdById])
+  @@map("provider_installations")
 }
 
 model Repository {
@@ -144,6 +145,7 @@ model Repository {
   pullRequests    PullRequest[]
 
   @@unique([provider, providerRepoId])
+  @@map("repositories")
 }
 
 model RepositoryMember {
