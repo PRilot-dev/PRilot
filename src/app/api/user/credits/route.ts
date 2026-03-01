@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { UnauthorizedError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { aiLimiterPerWeek } from "@/lib/server/redis/rate-limiters";
+import { aiLimiterPerMonth } from "@/lib/server/redis/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 
-const WEEKLY_LIMIT = 20;
+const MONTHLY_LIMIT = 30;
 
 export async function GET() {
 	try {
@@ -14,12 +14,12 @@ export async function GET() {
 			throw new UnauthorizedError("Unauthenticated");
 		}
 
-		const key = `ai:week:user:${user.id}`;
-		const { remaining, reset } = await aiLimiterPerWeek.getRemaining(key);
+		const key = `ai:month:user:${user.id}`;
+		const { remaining, reset } = await aiLimiterPerMonth.getRemaining(key);
 
 		return NextResponse.json({
 			remaining,
-			total: WEEKLY_LIMIT,
+			total: MONTHLY_LIMIT,
 			reset,
 		});
 	} catch (error) {

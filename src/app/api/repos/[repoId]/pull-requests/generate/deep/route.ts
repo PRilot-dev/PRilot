@@ -15,9 +15,9 @@ import {
 	UnauthorizedError,
 } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { checkWeeklyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
+import { checkMonthlyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { aiLimiterPerMinute, aiLimiterPerWeek } from "@/lib/server/redis/rate-limiters";
+import { aiLimiterPerMinute, aiLimiterPerMonth } from "@/lib/server/redis/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 import type { IPRResponse } from "@/types/pullRequests";
 
@@ -105,10 +105,10 @@ export async function POST(
 		);
 		rateLimitOrThrow(minuteLimit);
 
-		// 8. Owner-based weekly limit (check only, increment on success)
-		const weeklyResult = await checkWeeklyLimit(repo.members, user.id);
-		if (weeklyResult instanceof NextResponse) return weeklyResult;
-		const { weeklyLimitKey, isOwner } = weeklyResult;
+		// 8. Owner-based monthly limit (check only, increment on success)
+		const monthlyResult = await checkMonthlyLimit(repo.members, user.id);
+		if (monthlyResult instanceof NextResponse) return monthlyResult;
+		const { monthlyLimitKey, isOwner } = monthlyResult;
 
 		// 9. Prepare raw diffs for AI
 		const rawDiffs = files
@@ -178,16 +178,16 @@ export async function POST(
 				}
 			}
 
-			// 11. Success — consume weekly rate limit credit
-			const weeklyLimit =
-				await aiLimiterPerWeek.limit(weeklyLimitKey);
+			// 11. Success — consume monthly rate limit credit
+			const monthlyLimit =
+				await aiLimiterPerMonth.limit(monthlyLimitKey);
 
 			parsed.description = fixDescriptionHeaders(parsed.description);
 			const response: IPRResponse = { ...parsed };
 			if (isOwner) {
 				response.rateLimit = {
-					weeklyRemaining: weeklyLimit.remaining,
-					weeklyReset: weeklyLimit.reset,
+					monthlyRemaining: monthlyLimit.remaining,
+					monthlyReset: monthlyLimit.reset,
 				};
 			}
 

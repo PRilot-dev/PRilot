@@ -14,9 +14,9 @@ import {
 	UnauthorizedError,
 } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { checkWeeklyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
+import { checkMonthlyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { aiLimiterPerMinute, aiLimiterPerWeek } from "@/lib/server/redis/rate-limiters";
+import { aiLimiterPerMinute, aiLimiterPerMonth } from "@/lib/server/redis/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 import type { IPRResponse } from "@/types/pullRequests";
 
@@ -94,10 +94,10 @@ export async function POST(
 		);
 		rateLimitOrThrow(minuteLimit);
 
-		// 9. Owner-based weekly limit (check only, increment on success)
-		const weeklyResult = await checkWeeklyLimit(repo.members, user.id);
-		if (weeklyResult instanceof NextResponse) return weeklyResult;
-		const { weeklyLimitKey, isOwner } = weeklyResult;
+		// 9. Owner-based monthly limit (check only, increment on success)
+		const monthlyResult = await checkMonthlyLimit(repo.members, user.id);
+		if (monthlyResult instanceof NextResponse) return monthlyResult;
+		const { monthlyLimitKey, isOwner } = monthlyResult;
 
 		// 10. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
@@ -135,15 +135,15 @@ export async function POST(
 
 			const parsed = JSON.parse(text) as IPRResponse;
 
-			// Success — consume weekly rate limit credit
-			const weeklyLimit = await aiLimiterPerWeek.limit(weeklyLimitKey);
+			// Success — consume monthly rate limit credit
+			const monthlyLimit = await aiLimiterPerMonth.limit(monthlyLimitKey);
 
 			parsed.description = fixDescriptionHeaders(parsed.description);
 			const response: IPRResponse = { ...parsed };
 			if (isOwner) {
 				response.rateLimit = {
-					weeklyRemaining: weeklyLimit.remaining,
-					weeklyReset: weeklyLimit.reset,
+					monthlyRemaining: monthlyLimit.remaining,
+					monthlyReset: monthlyLimit.reset,
 				};
 			}
 

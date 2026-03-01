@@ -56,9 +56,9 @@ export const aiLimiterPerMinute = new Ratelimit({
 	limiter: Ratelimit.fixedWindow(5, "1 m"),
 });
 
-export const aiLimiterPerWeek = new Ratelimit({
+export const aiLimiterPerMonth = new Ratelimit({
 	redis,
-	limiter: Ratelimit.fixedWindow(20, "7 d"),
+	limiter: Ratelimit.fixedWindow(30, "30 d"),
 });
 
 // ---- GitHub ----

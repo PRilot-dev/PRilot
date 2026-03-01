@@ -4,7 +4,7 @@ import { redis } from "@/lib/server/redis/client";
 import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import {
-	aiLimiterPerWeek,
+	aiLimiterPerMonth,
 	githubCompareCommitsLimiter,
 } from "@/lib/server/redis/rate-limiters";
 import { formatDateTimeForErrors } from "@/lib/utils/formatDateTime";
@@ -73,27 +73,27 @@ export async function fetchCachedCompareData(
 	};
 }
 
-// ─── Weekly rate limit check ──────────────────────────────
+// ─── Monthly rate limit check ─────────────────────────────
 
-export async function checkWeeklyLimit(
+export async function checkMonthlyLimit(
 	members: { userId: string; role: string }[],
 	userId: string,
-): Promise<NextResponse | { weeklyLimitKey: string; isOwner: boolean }> {
+): Promise<NextResponse | { monthlyLimitKey: string; isOwner: boolean }> {
 	const owner = members.find((m) => m.role === "owner");
 	if (!owner) throw new Error("No owner found for repository");
 
 	const isOwner = userId === owner.userId;
-	const weeklyLimitKey = `ai:week:user:${owner.userId}`;
-	const weeklyCheck = await aiLimiterPerWeek.getRemaining(weeklyLimitKey);
+	const monthlyLimitKey = `ai:month:user:${owner.userId}`;
+	const monthlyCheck = await aiLimiterPerMonth.getRemaining(monthlyLimitKey);
 
-	if (weeklyCheck.remaining <= 0) {
+	if (monthlyCheck.remaining <= 0) {
 		if (isOwner) {
 			return NextResponse.json(
 				{
-					error: `Weekly PR generation limit reached. Resets on ${formatDateTimeForErrors(weeklyCheck.reset)}`,
+					error: `Monthly PR generation limit reached. Resets on ${formatDateTimeForErrors(monthlyCheck.reset)}`,
 					rateLimit: {
-						weeklyRemaining: 0,
-						weeklyReset: weeklyCheck.reset,
+						monthlyRemaining: 0,
+						monthlyReset: monthlyCheck.reset,
 					},
 				},
 				{ status: 429 },
@@ -103,11 +103,11 @@ export async function checkWeeklyLimit(
 		return NextResponse.json(
 			{
 				error:
-					"Repository owner weekly PR generation limit has been reached.",
+					"Repository owner monthly PR generation limit has been reached.",
 			},
 			{ status: 429 },
 		);
 	}
 
-	return { weeklyLimitKey, isOwner };
+	return { monthlyLimitKey, isOwner };
 }
