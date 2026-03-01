@@ -7,7 +7,7 @@ import { languageSchema } from "@/lib/schemas/pr.schema";
 import { cerebras } from "@/lib/server/ai/client";
 import { buildPRFromDiffs, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
 import { createSSEResponse, streamCerebrasTokens } from "@/lib/server/ai/streamSSE";
-import { summarizeDiffsForPR } from "@/lib/server/ai/summarizeFileDiffs";
+import { prepareFileDiffForAI } from "@/lib/server/github/fileDiffs";
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -16,8 +16,6 @@ import {
 } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
 import { checkWeeklyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
-import { redis } from "@/lib/server/redis/client";
-import { buildSummaryCacheKey } from "@/lib/server/redis/compareCacheKey";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import { aiLimiterPerMinute, aiLimiterPerWeek } from "@/lib/server/redis/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
@@ -88,16 +86,16 @@ export async function POST(
 			repoOwner: repo.owner,
 			repoName: repo.name,
 		});
-		console.log(`[DEEP] File diffs: ${(performance.now() - t0).toFixed(0)}ms (${cacheHit ? "cache hit" : "GitHub fetch"}, ${files?.length ?? 0} files)`);
+		const totalChanges = files?.reduce((sum, f) => sum + f.changes, 0) ?? 0;
+		console.log(`[DEEP] File diffs: ${(performance.now() - t0).toFixed(0)}ms (${cacheHit ? "cache hit" : "GitHub fetch"}, ${files?.length ?? 0} files, ${totalChanges} lines changed)`);
 
 		if (!files || files.length === 0) {
 			throw new BadRequestError("No file changes found between branches");
 		}
 
-		const changedFiles = files.filter((f) => f.status !== "deleted");
-		if (changedFiles.length > 30) {
+		if (totalChanges > 2000) {
 			throw new BadRequestError(
-				"Too many files have changes, maximum is 30 for deep mode. Please use fast mode instead.",
+				"Too many lines changed (max 2000 for deep mode). Please use fast mode instead.",
 			);
 		}
 
@@ -112,35 +110,12 @@ export async function POST(
 		if (weeklyResult instanceof NextResponse) return weeklyResult;
 		const { weeklyLimitKey, isOwner } = weeklyResult;
 
-		// 9. Summarize diffs (stage 1) — cached to avoid re-summarizing on repeated generations
-		const t2 = performance.now();
-		const summaryCacheKey = buildSummaryCacheKey(repoId, safeBase, safeCompare);
-		let diffSummaries: string | null = null;
-		let summaryCacheHit = false;
+		// 9. Prepare raw diffs for AI
+		const rawDiffs = files
+			.map((f) => prepareFileDiffForAI(f).patch)
+			.join("\n\n");
 
-		try {
-			const cachedSummary = await redis.get<string>(summaryCacheKey);
-			if (cachedSummary) {
-				diffSummaries = typeof cachedSummary === "string" ? cachedSummary : JSON.stringify(cachedSummary);
-				summaryCacheHit = true;
-			}
-		} catch {
-			// Cache read failed — fall through to AI summarization
-		}
-
-		if (!diffSummaries) {
-			diffSummaries = await summarizeDiffsForPR(files);
-			try {
-				await redis.set(summaryCacheKey, diffSummaries, { ex: 180 });
-			} catch {
-				// Cache write failed — non-blocking, continue
-			}
-		}
-
-		const t3 = performance.now();
-		console.log(`[DEEP] Summarize diffs: ${(t3 - t2).toFixed(0)}ms (${summaryCacheHit ? "cache hit" : "Cerebras"})`);
-
-		// 10. PR generation (stage 2) — streamed via SSE
+		// 10. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
 			async function streamGeneration() {
 				const completion = await cerebras.chat.completions.create({
@@ -152,7 +127,7 @@ export async function POST(
 						},
 						{
 							role: "user",
-							content: `File diffs summary:\n${diffSummaries}${commits.length > 0 ? `\n\nCommit messages:\n${commits.map((c) => `- ${c}`).join("\n")}` : ""}`,
+							content: `File diffs:\n${rawDiffs}${commits.length > 0 ? `\n\nCommit messages:\n${commits.map((c) => `- ${c}`).join("\n")}` : ""}`,
 						},
 					],
 					response_format: {

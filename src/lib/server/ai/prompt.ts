@@ -102,9 +102,9 @@ Describe components by what they let the user do, not how they work internally.
 Write ENTIRELY in ${language}, including title and all section headers.
 
 You will receive TWO sources of information:
-1. **File diff summaries** — what changed in each file. Use for factual accuracy.
-2. **Commit messages** — the developer's intent. Use for understanding goals.
-Cross-reference both. If they conflict, prefer file diff summaries.
+1. **File diffs** — the raw code changes between the two branches.
+2. **Commit messages** — the developer's intent, narrative, and the nature of the work (e.g. new feature vs refactor vs fix).
+Cross-reference both: use commit messages to frame the narrative (what was the goal, was it a refactor or a new feature?), and use file diffs to understand what specifically changed.
 
 Generate JSON with "title" and "description":
 
