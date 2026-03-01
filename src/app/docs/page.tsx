@@ -259,7 +259,7 @@ export default function DocsPage() {
 							<p className="text-gray-600 dark:text-gray-400 text-[15px] leading-relaxed mb-6">
 								PRilot reads the difference between two branches and uses AI to
 								write a pull request title and description for you. Each
-								generation uses one of your weekly credits.
+								generation uses one of your monthly credits.
 							</p>
 
 							<div className="space-y-3 mb-8">
@@ -348,8 +348,8 @@ export default function DocsPage() {
 
 							<Note>
 								Your remaining credits are shown in the user menu (top right).
-								Credits reset weekly. You have{" "}
-								<span className="font-medium">20 generations per week</span> per
+								Credits reset monthly. You have{" "}
+								<span className="font-medium">30 generations per month</span> per
 								account.
 							</Note>
 						</section>

@@ -168,10 +168,10 @@ export default function TermsPage() {
 						<ul className="list-disc pl-6 space-y-2 text-sm">
 							<li>
 								<span className="font-medium text-gray-900 dark:text-white">
-									Weekly limit:
+									Monthly limit:
 								</span>{" "}
-								Repository owners may generate up to 20 pull requests per
-								repository per week. This limit resets automatically.
+								Repository owners may generate up to 30 pull requests per
+								repository per month. This limit resets automatically.
 							</li>
 							<li>
 								<span className="font-medium text-gray-900 dark:text-white">
