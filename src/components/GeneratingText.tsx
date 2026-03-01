@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 const DEEP_PHRASES = [
 	"Analyzing changes",
 	"Reading code",
-	"Summarizing changes",
 	"Writing PR",
 ];
 
@@ -23,10 +22,10 @@ export function GeneratingText({ mode }: GeneratingTextProps) {
 	const [dotCount, setDotCount] = useState(1);
 
 	const phrases = mode === "deep" ? DEEP_PHRASES : FAST_PHRASES;
-	// Deep: 750ms per phrase (4 phrases = 3s), then "Almost there"
+	// Deep: 700ms per phrase (3 phrases = ~2s), then "Almost there"
 	// Fast: 500ms per phrase (3 phrases = 1.5s), then "Almost there"
-	const msPerPhrase = mode === "deep" ? 750 : 500;
-	const almostThereThreshold = mode === "deep" ? 3000 : 1500;
+	const msPerPhrase = mode === "deep" ? 700 : 500;
+	const almostThereThreshold = mode === "deep" ? 2100 : 1500;
 
 	// Track elapsed time
 	useEffect(() => {

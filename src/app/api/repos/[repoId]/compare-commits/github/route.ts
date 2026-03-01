@@ -8,7 +8,7 @@ import {
 	ForbiddenError,
 	NotFoundError,
 } from "@/lib/server/error";
-import { getCommitMessages } from "@/lib/server/github/commits";
+import { getCompareData } from "@/lib/server/github/compare";
 import { handleError } from "@/lib/server/handleError";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import { githubCompareCommitsLimiter } from "@/lib/server/redis/rate-limiters";
@@ -70,7 +70,7 @@ export async function GET(
 		}
 
 		// 8. Fetch commits from GitHub
-		const commitMessages = await getCommitMessages(
+		const { commits } = await getCompareData(
 			repo.installation.installationId,
 			repo.owner,
 			repo.name,
@@ -78,7 +78,7 @@ export async function GET(
 			safeCompareBranch,
 		);
 
-		return NextResponse.json({ commits: commitMessages });
+		return NextResponse.json({ commits });
 	} catch (error) {
 		return handleError(error);
 	}

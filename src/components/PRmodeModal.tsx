@@ -55,9 +55,9 @@ export function PRModeModal({ isOpen, onClose }: PRModeModalProps) {
 							- Deep Mode
 						</h4>
 						<p className="text-sm text-gray-700 dark:text-gray-300">
-							Uses a multi-step AI pipeline to analyzes file changes between the
-							branches and then generates a detailed PR based on the analysis.
-							Limited to 30 files changed.
+							Analyzes the raw file diffs and commit messages between the
+							branches to generate a detailed, accurate PR description.
+							Limited to 2000 lines of code changed.
 						</p>
 					</div>
 				</div>

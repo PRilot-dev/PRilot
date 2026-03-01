@@ -336,12 +336,12 @@ export default function DocsPage() {
 										</span>
 									</div>
 									<p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-										Analyses{" "}
+										Analyzes{" "}
 										<span className="font-medium text-gray-900 dark:text-white">
-											file diffs and commit messages
+											raw file diffs and commit messages
 										</span>{" "}
-										for a more detailed and accurate description. Limited to repositories with up
-										to 30 changed files.
+										for a more detailed and accurate description. Limited to
+										2000 lines changed.
 									</p>
 								</div>
 							</div>

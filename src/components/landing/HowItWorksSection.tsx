@@ -15,7 +15,7 @@ const steps = [
 	{
 		num: "3",
 		title: "Choose Fast or Deep",
-		desc: "Fast reads commit messages. Deep analyzes file diffs with a multi-step AI pipeline.",
+		desc: "Fast reads commit messages. Deep analyzes file diffs and commits for a thorough description.",
 	},
 	{
 		num: "4",

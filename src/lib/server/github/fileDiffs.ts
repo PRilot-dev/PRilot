@@ -1,26 +1,7 @@
-import type { IGitHubCompareResponse, IGitHubFile } from "@/types/commits";
-import { githubFetch } from "./client";
+import type { IGitHubFile } from "@/types/commits";
 
 /**
- * Returns an array of files between two branches, ready for summarization
- */
-export async function getFileDiffs(
-	installationId: string,
-	owner: string,
-	repoName: string,
-	baseBranch: string,
-	compareBranch: string,
-): Promise<IGitHubFile[] | undefined> {
-	const compare = await githubFetch<IGitHubCompareResponse>(
-		installationId,
-		`/repos/${owner}/${repoName}/compare/${baseBranch}...${compareBranch}`,
-	);
-
-	return compare.data.files;
-}
-
-/**
- * Prepares a file diff for AI summarization.
+ * Prepares a file diff for AI processing.
  *
  * Returns an object:
  * {

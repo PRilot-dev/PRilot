@@ -5,7 +5,7 @@ import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
 import { cerebras } from "@/lib/server/ai/client";
-import { buildPRFromCommits } from "@/lib/server/ai/prompt";
+import { buildPRFromCommits, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
 import { createSSEResponse, streamCerebrasTokens } from "@/lib/server/ai/streamSSE";
 import {
 	BadRequestError,
@@ -13,18 +13,11 @@ import {
 	NotFoundError,
 	UnauthorizedError,
 } from "@/lib/server/error";
-import { getCommitMessages } from "@/lib/server/github/commits";
 import { handleError } from "@/lib/server/handleError";
-import { redis } from "@/lib/server/redis/client";
-import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
+import { checkWeeklyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import {
-	aiLimiterPerMinute,
-	aiLimiterPerWeek,
-	githubCompareCommitsLimiter,
-} from "@/lib/server/redis/rate-limiters";
+import { aiLimiterPerMinute, aiLimiterPerWeek } from "@/lib/server/redis/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
-import { formatDateTimeForErrors } from "@/lib/utils/formatDateTime";
 import type { IPRResponse } from "@/types/pullRequests";
 
 export const dynamic = "force-dynamic";
@@ -80,39 +73,15 @@ export async function POST(
 		}
 
 		// 6. Fetch commit messages (try prefetch cache first, fall back to GitHub)
-		const cacheKey = buildCompareCacheKey(repoId, safeBase, safeCompare);
-
-		let commits: string[] | undefined;
-		let cacheHit = false;
-
-		try {
-			const cached = await redis.get<string>(cacheKey);
-			if (cached) {
-				const data = JSON.parse(typeof cached === "string" ? cached : JSON.stringify(cached));
-				if (data.commits?.length) {
-					commits = data.commits;
-					cacheHit = true;
-				}
-			}
-		} catch {
-			// Cache read failed — fall through to GitHub
-		}
-
-		if (!commits) {
-			const ghLimit = await githubCompareCommitsLimiter.limit(
-				`github:compare:user:${user.id}`,
-			);
-			rateLimitOrThrow(ghLimit);
-
-			commits = await getCommitMessages(
-				repo.installation.installationId,
-				repo.owner,
-				repo.name,
-				safeBase,
-				safeCompare,
-			);
-		}
-
+		const { commits, cacheHit } = await fetchCachedCompareData({
+			repoId,
+			baseBranch: safeBase,
+			compareBranch: safeCompare,
+			userId: user.id,
+			installationId: repo.installation.installationId,
+			repoOwner: repo.owner,
+			repoName: repo.name,
+		});
 		console.log(`[FAST] Commits: ${cacheHit ? "cache hit" : "GitHub fetch"} (${commits.length} commits)`);
 
 		if (!commits.length) {
@@ -126,34 +95,9 @@ export async function POST(
 		rateLimitOrThrow(minuteLimit);
 
 		// 9. Owner-based weekly limit (check only, increment on success)
-		const owner = repo.members.find((m) => m.role === "owner");
-		if (!owner) throw new Error("No owner found for repository");
-
-		const weeklyLimitKey = `ai:week:user:${owner.userId}`;
-		const weeklyCheck = await aiLimiterPerWeek.getRemaining(weeklyLimitKey);
-
-		if (weeklyCheck.remaining <= 0) {
-			if (user.id === owner.userId) {
-				return NextResponse.json(
-					{
-						error: `Weekly PR generation limit reached. Resets on ${formatDateTimeForErrors(weeklyCheck.reset)}`,
-						rateLimit: {
-							weeklyRemaining: 0,
-							weeklyReset: weeklyCheck.reset,
-						},
-					},
-					{ status: 429 },
-				);
-			}
-
-			return NextResponse.json(
-				{
-					error:
-						"Repository owner weekly PR generation limit has been reached.",
-				},
-				{ status: 429 },
-			);
-		}
+		const weeklyResult = await checkWeeklyLimit(repo.members, user.id);
+		if (weeklyResult instanceof NextResponse) return weeklyResult;
+		const { weeklyLimitKey, isOwner } = weeklyResult;
 
 		// 10. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
@@ -180,20 +124,23 @@ export async function POST(
 					},
 				},
 				stream: true,
+				reasoning_effort: "low",
+				temperature: 0.4,
 			});
 
-			const accumulated = await streamCerebrasTokens(completion, send);
+			const { text, usage } = await streamCerebrasTokens(completion, send);
 			console.log(
-				`[FAST] PR generation streamed (Cerebras): ${(performance.now() - t0).toFixed(0)}ms`,
+				`[FAST] PR generation streamed (Cerebras): ${(performance.now() - t0).toFixed(0)}ms | tokens: ${usage?.promptTokens ?? "?"}in/${usage?.completionTokens ?? "?"}out/${usage?.totalTokens ?? "?"}total`,
 			);
 
-			const parsed = JSON.parse(accumulated) as IPRResponse;
+			const parsed = JSON.parse(text) as IPRResponse;
 
 			// Success — consume weekly rate limit credit
 			const weeklyLimit = await aiLimiterPerWeek.limit(weeklyLimitKey);
 
+			parsed.description = fixDescriptionHeaders(parsed.description);
 			const response: IPRResponse = { ...parsed };
-			if (user.id === owner.userId) {
+			if (isOwner) {
 				response.rateLimit = {
 					weeklyRemaining: weeklyLimit.remaining,
 					weeklyReset: weeklyLimit.reset,

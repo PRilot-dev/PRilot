@@ -9,14 +9,13 @@ import {
 	NotFoundError,
 	UnauthorizedError,
 } from "@/lib/server/error";
-import { githubFetch } from "@/lib/server/github/client";
+import { getCompareData } from "@/lib/server/github/compare";
 import { handleError } from "@/lib/server/handleError";
 import { redis } from "@/lib/server/redis/client";
 import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import { githubCompareCommitsLimiter } from "@/lib/server/redis/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
-import type { IGitHubCompareResponse } from "@/types/commits";
 
 const prisma = getPrisma();
 const MAX_CACHE_SIZE_BYTES = 512 * 1024; // 512 KB
@@ -73,15 +72,13 @@ export async function POST(
 		rateLimitOrThrow(ghLimit);
 
 		// 7. Fetch compare data from GitHub (files + commits in one call)
-		const compare = await githubFetch<IGitHubCompareResponse>(
+		const { files, commits } = await getCompareData(
 			repo.installation.installationId,
-			`/repos/${repo.owner}/${repo.name}/compare/${safeBase}...${safeCompare}`,
+			repo.owner,
+			repo.name,
+			safeBase,
+			safeCompare,
 		);
-
-		const files = compare.data.files;
-		const commits = compare.data.commits
-			.filter((c) => c.parents.length === 1)
-			.map((c) => c.commit.message);
 
 		// 8. Cache in Redis if within size limit
 		if ((files && files.length > 0) || commits.length > 0) {

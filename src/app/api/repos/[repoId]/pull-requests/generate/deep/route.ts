@@ -5,28 +5,22 @@ import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
 import { cerebras } from "@/lib/server/ai/client";
-import { buildPRFromDiffs } from "@/lib/server/ai/prompt";
+import { buildPRFromDiffs, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
 import { createSSEResponse, streamCerebrasTokens } from "@/lib/server/ai/streamSSE";
-import { summarizeDiffsForPR } from "@/lib/server/ai/summarizeFileDiffs";
+import { prepareFileDiffForAI } from "@/lib/server/github/fileDiffs";
 import {
 	BadRequestError,
 	ForbiddenError,
 	NotFoundError,
 	UnauthorizedError,
 } from "@/lib/server/error";
-import { getFileDiffs } from "@/lib/server/github/fileDiffs";
 import { handleError } from "@/lib/server/handleError";
-import { redis } from "@/lib/server/redis/client";
-import { buildCompareCacheKey, buildSummaryCacheKey } from "@/lib/server/redis/compareCacheKey";
+import { checkWeeklyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import {
-	aiLimiterPerMinute,
-	aiLimiterPerWeek,
-	githubCompareCommitsLimiter,
-} from "@/lib/server/redis/rate-limiters";
+import { aiLimiterPerMinute, aiLimiterPerWeek } from "@/lib/server/redis/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
-import { formatDateTimeForErrors } from "@/lib/utils/formatDateTime";
 import type { IPRResponse } from "@/types/pullRequests";
+
 
 export const dynamic = "force-dynamic";
 
@@ -81,50 +75,27 @@ export async function POST(
 			throw new ForbiddenError("You are not a member of this repository");
 		}
 
-		// 6. Fetch file diffs (try prefetch cache first, fall back to GitHub)
+		// 6. Fetch file diffs + commits (try prefetch cache first, fall back to GitHub)
 		const t0 = performance.now();
-		const cacheKey = buildCompareCacheKey(repoId, safeBase, safeCompare);
-
-		let files: Awaited<ReturnType<typeof getFileDiffs>>;
-		let cacheHit = false;
-
-		try {
-			const cached = await redis.get<string>(cacheKey);
-			if (cached) {
-				const data = JSON.parse(typeof cached === "string" ? cached : JSON.stringify(cached));
-				files = data.files;
-				cacheHit = true;
-			}
-		} catch {
-			// Cache read failed — fall through to GitHub
-		}
-
-		if (!files) {
-			const ghLimit = await githubCompareCommitsLimiter.limit(
-				`github:compare:user:${user.id}`,
-			);
-			rateLimitOrThrow(ghLimit);
-
-			files = await getFileDiffs(
-				repo.installation.installationId,
-				repo.owner,
-				repo.name,
-				safeBase,
-				safeCompare,
-			);
-		}
-
-		const t1 = performance.now();
-		console.log(`[DEEP] File diffs: ${(t1 - t0).toFixed(0)}ms (${cacheHit ? "cache hit" : "GitHub fetch"}, ${files?.length ?? 0} files)`);
+		const { files, commits, cacheHit } = await fetchCachedCompareData({
+			repoId,
+			baseBranch: safeBase,
+			compareBranch: safeCompare,
+			userId: user.id,
+			installationId: repo.installation.installationId,
+			repoOwner: repo.owner,
+			repoName: repo.name,
+		});
+		const totalChanges = files?.reduce((sum, f) => sum + f.changes, 0) ?? 0;
+		console.log(`[DEEP] File diffs: ${(performance.now() - t0).toFixed(0)}ms (${cacheHit ? "cache hit" : "GitHub fetch"}, ${files?.length ?? 0} files, ${totalChanges} lines changed)`);
 
 		if (!files || files.length === 0) {
 			throw new BadRequestError("No file changes found between branches");
 		}
 
-		const changedFiles = files.filter((f) => f.status !== "deleted");
-		if (changedFiles.length > 30) {
+		if (totalChanges > 2000) {
 			throw new BadRequestError(
-				"Too many files have changes, maximum is 30 for deep mode. Please use fast mode instead.",
+				"Too many lines changed (max 2000 for deep mode). Please use fast mode instead.",
 			);
 		}
 
@@ -135,66 +106,18 @@ export async function POST(
 		rateLimitOrThrow(minuteLimit);
 
 		// 8. Owner-based weekly limit (check only, increment on success)
-		const owner = repo.members.find((m) => m.role === "owner");
-		if (!owner) throw new Error("No owner found for repository");
+		const weeklyResult = await checkWeeklyLimit(repo.members, user.id);
+		if (weeklyResult instanceof NextResponse) return weeklyResult;
+		const { weeklyLimitKey, isOwner } = weeklyResult;
 
-		const weeklyLimitKey = `ai:week:user:${owner.userId}`;
-		const weeklyCheck = await aiLimiterPerWeek.getRemaining(weeklyLimitKey);
+		// 9. Prepare raw diffs for AI
+		const rawDiffs = files
+			.map((f) => prepareFileDiffForAI(f).patch)
+			.join("\n\n");
 
-		if (weeklyCheck.remaining <= 0) {
-			if (user.id === owner.userId) {
-				return NextResponse.json(
-					{
-						error: `Weekly PR generation limit reached. Resets on ${formatDateTimeForErrors(weeklyCheck.reset)}`,
-						rateLimit: {
-							weeklyRemaining: 0,
-							weeklyReset: weeklyCheck.reset,
-						},
-					},
-					{ status: 429 },
-				);
-			}
-
-			return NextResponse.json(
-				{
-					error:
-						"Repository owner weekly PR generation limit has been reached.",
-				},
-				{ status: 429 },
-			);
-		}
-
-		// 9. Summarize diffs (stage 1) — cached to avoid re-summarizing on repeated generations
-		const t2 = performance.now();
-		const summaryCacheKey = buildSummaryCacheKey(repoId, safeBase, safeCompare);
-		let diffSummaries: string | null = null;
-		let summaryCacheHit = false;
-
-		try {
-			const cachedSummary = await redis.get<string>(summaryCacheKey);
-			if (cachedSummary) {
-				diffSummaries = typeof cachedSummary === "string" ? cachedSummary : JSON.stringify(cachedSummary);
-				summaryCacheHit = true;
-			}
-		} catch {
-			// Cache read failed — fall through to AI summarization
-		}
-
-		if (!diffSummaries) {
-			diffSummaries = await summarizeDiffsForPR(files);
-			try {
-				await redis.set(summaryCacheKey, diffSummaries, { ex: 180 });
-			} catch {
-				// Cache write failed — non-blocking, continue
-			}
-		}
-
-		const t3 = performance.now();
-		console.log(`[DEEP] Summarize diffs: ${(t3 - t2).toFixed(0)}ms (${summaryCacheHit ? "cache hit" : "Cerebras"})`);
-
-		// 10. PR generation (stage 2) — streamed via SSE
+		// 10. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
-			async function streamGeneration(): Promise<string> {
+			async function streamGeneration() {
 				const completion = await cerebras.chat.completions.create({
 					model: "gpt-oss-120b",
 					messages: [
@@ -204,7 +127,7 @@ export async function POST(
 						},
 						{
 							role: "user",
-							content: `File diffs summary: ${diffSummaries}`,
+							content: `File diffs:\n${rawDiffs}${commits.length > 0 ? `\n\nCommit messages:\n${commits.map((c) => `- ${c}`).join("\n")}` : ""}`,
 						},
 					],
 					response_format: {
@@ -215,6 +138,8 @@ export async function POST(
 						},
 					},
 					stream: true,
+					temperature: 0.4,
+					reasoning_effort: "low",
 				});
 
 				return streamCerebrasTokens(completion, send);
@@ -222,12 +147,12 @@ export async function POST(
 
 			// First attempt
 			const t4 = performance.now();
-			let rawJson = await streamGeneration();
+			let result = await streamGeneration();
 			console.log(
-				`[DEEP] PR generation streamed (Cerebras): ${(performance.now() - t4).toFixed(0)}ms`,
+				`[DEEP] PR generation streamed (Cerebras): ${(performance.now() - t4).toFixed(0)}ms | tokens: ${result.usage?.promptTokens ?? "?"}in/${result.usage?.completionTokens ?? "?"}out/${result.usage?.totalTokens ?? "?"}total`,
 			);
 
-			let parsed = JSON.parse(rawJson) as IPRResponse;
+			let parsed = JSON.parse(result.text) as IPRResponse;
 
 			// Retry if description is too short
 			if (parsed.description.length < MIN_DESCRIPTION_LENGTH) {
@@ -237,12 +162,12 @@ export async function POST(
 				send("retry", {});
 
 				const t6 = performance.now();
-				rawJson = await streamGeneration();
+				result = await streamGeneration();
 				console.log(
-					`[DEEP] PR generation retry streamed: ${(performance.now() - t6).toFixed(0)}ms`,
+					`[DEEP] PR generation retry streamed: ${(performance.now() - t6).toFixed(0)}ms | tokens: ${result.usage?.promptTokens ?? "?"}in/${result.usage?.completionTokens ?? "?"}out/${result.usage?.totalTokens ?? "?"}total`,
 				);
 
-				parsed = JSON.parse(rawJson) as IPRResponse;
+				parsed = JSON.parse(result.text) as IPRResponse;
 
 				if (parsed.description.length < MIN_DESCRIPTION_LENGTH) {
 					send("error", {
@@ -257,8 +182,9 @@ export async function POST(
 			const weeklyLimit =
 				await aiLimiterPerWeek.limit(weeklyLimitKey);
 
+			parsed.description = fixDescriptionHeaders(parsed.description);
 			const response: IPRResponse = { ...parsed };
-			if (user.id === owner.userId) {
+			if (isOwner) {
 				response.rateLimit = {
 					weeklyRemaining: weeklyLimit.remaining,
 					weeklyReset: weeklyLimit.reset,

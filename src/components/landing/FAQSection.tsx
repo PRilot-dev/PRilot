@@ -92,7 +92,7 @@ const faqCategories: FAQCategory[] = [
 			{
 				question: "Can it handle refactors?",
 				answer:
-					"Yes. PRilot detects file renames, deletions, and structural changes and summarizes them clearly.",
+					"Yes. PRilot detects file renames, deletions, and structural changes and describes them clearly.",
 			},
 			{
 				question: "Who is this for?",

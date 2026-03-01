@@ -49,73 +49,37 @@ export function buildPRFromCommits(
 	const headers = sectionHeaders[language];
 
 	return `
-You are a senior software engineer writing a GitHub Pull Request
-for a production codebase.
+You are a senior software engineer writing a high-level GitHub Pull Request.
+Compare branch: ${compareBranch}
 
-Compare branch name: ${compareBranch}
+ABSTRACTION LEVEL — this is the most important rule:
+Write at the FEATURE and BEHAVIOR level. Describe what the user/system can do differently, not how it's implemented.
 
-The ENTIRE Pull Request MUST be written in ${language}.
-This includes the PR TITLE and ALL section headers and content.
-
-All main section headers must be exactly as follows in ${language}:
-- Description section: ## ${headers.description}
-- Changes section: ## ${headers.changes}
-- How to Test section: ## ${headers.howToTest}
-
-Your task is to write a PR based **only on the commit messages below**.
-You may NOT add any information that is NOT present in the commit messages.
-Do NOT assume or invent filenames, variables, endpoints, or any implementation details.
+Never mention: file paths, function/variable/class names, libraries, algorithms, database details, component internals, or implementation specifics.
 Do NOT mention commit scopes (e.g., feat(useAuth), fix, chore(deps)).
 
----
+Write ENTIRELY in ${language}, including title and all section headers.
 
-Generate:
+Your task is to write a PR based **only on the commit messages below**.
 
-1. A concise PR title (max 72 characters, imperative mood)
-2. A structured PR description with the following sections:
+Generate JSON with "title" and "description":
+
+**title**: max 72 characters, imperative mood.
+
+**description** structure — use these exact headers:
 
 ## ${headers.description}
-- 1–2 sentences summarizing the overall goal of the PR **using only information in the commits**
-
----
+1–2 sentences on the overall goal.
 
 ## ${headers.changes}
-- Split the changes into 1 to 6 numbered sections
-- Each section must:
-  - Group related commits by intent, not by file or inferred detail
-  - Describe **what was done and why**, only using commit message content
-- Number the sections from most important to less important
-- Do NOT add any specifics that are not in the commits
-
-Example format:
-
-### 1. **<Section title based on commits>**
-- Description of changes in this group of commits
-- Bulleted explanation summarizing commit intent
-
-### 2. **<Section title based on commits>**
-- Description of changes in this group of commits
-- Bulleted explanation summarizing commit intent
-
-(continue if relevant)
-
----
+1–4 numbered sections grouped by intent (not by file). Fewer is better.
+Each section: ### N. **Title** followed by 1–3 bullet points.
+Be direct and factual — no value judgments ("improving", "better", "cleaner").
 
 ## ${headers.howToTest}
-- Suggest testing steps only if they can be **inferred from the commit messages**
-- Do NOT assume any file paths, env variables, or APIs not mentioned in the commits
-- Use bullet points for clarity
+3–5 bullet points. User-perspective actions only.
 
----
-
-### Writing rules
-- ONLY use information explicitly present in the commit messages
-- Do NOT invent anything (variables, files, API endpoints, environment keys, code behavior)
-- Group commits logically, summarize intent clearly
-- Avoid filler, boilerplate, or invented details
-
-### Important
-- Return description as ONE text block
+Keep the entire description readable in 30 seconds. No invented details.
 `;
 }
 
@@ -130,38 +94,46 @@ export function buildPRFromDiffs(language: PRLanguage, compareBranch: string) {
 You are a senior software engineer writing a high-level GitHub Pull Request.
 Compare branch: ${compareBranch}
 
+ABSTRACTION LEVEL — this is the most important rule:
+Write at the FEATURE and BEHAVIOR level. Describe what the user/system can do differently, not how it's implemented.
+Never mention: file paths, function/variable/class names, libraries, algorithms, database details, component internals, specific numbers/thresholds, or implementation specifics.
+Describe components by what they let the user do, not how they work internally.
+
 Write ENTIRELY in ${language}, including title and all section headers.
-Use these exact section headers:
-- ## ${headers.description}
-- ## ${headers.changes}
-- ## ${headers.howToTest}
 
-Generate:
+You will receive TWO sources of information:
+1. **File diffs** — the raw code changes between the two branches.
+2. **Commit messages** — the developer's intent, narrative, and the nature of the work (e.g. new feature vs refactor vs fix).
+Cross-reference both: use commit messages to frame the narrative (what was the goal, was it a refactor or a new feature?), and use file diffs to understand what specifically changed.
 
-1. A concise PR title (max 72 characters, imperative mood)
-2. A structured PR description:
+Generate JSON with "title" and "description":
+
+**title**: max 72 characters, imperative mood.
+
+**description** structure — use these exact headers:
 
 ## ${headers.description}
-1–2 sentences on the overall goal of the PR.
+1–2 sentences on the overall goal.
 
 ## ${headers.changes}
-- 1 to 4 numbered sections, grouped by intent (not by file). Fewer is better — fold small changes into broader sections.
-- Order from most to least important.
-- 1–3 concise bullet points per section. Be direct and factual — no value judgments ("improving X", "better Y", "cleaner Z", "smoothly").
-
-### 1. **<Section title>**
-- What changed, in plain language
-
-### 2. **<Section title>**
-- What changed
+1–4 numbered sections grouped by intent (not by file). Fewer is better.
+Each section: ### N. **Title** followed by 1–3 bullet points.
+Be direct and factual — no value judgments ("improving", "better", "cleaner").
 
 ## ${headers.howToTest}
-STRICTLY 3–5 bullet points, never more. User-perspective only — do not test cosmetic or styling details.
+3–5 bullet points. User-perspective actions only.
 
-### Rules
-- Project overview level, NOT code review level
-- No file paths, class names, CSS properties (opacity, background, border, shadow), variable names, or code-level details
-- No invented details — only use information from the diff summaries
-- Readable in 30 seconds
+Keep the entire description readable in 30 seconds. No invented details.
 `;
+}
+
+/**
+ * Fix change sections that use plain numbered lists instead of ### headers.
+ * e.g. "1. **Title**" → "### 1. **Title**"
+ */
+export function fixDescriptionHeaders(description: string): string {
+	return description
+		.replace(/^(\d+)\. \*\*/gm, "### $1. **")
+		// Strip inline code backticks that leak implementation details
+		.replace(/`[^`]+`/g, (match) => match.slice(1, -1));
 }

@@ -1,3 +1,10 @@
+export class SSEUserError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "SSEUserError";
+	}
+}
+
 export type SSESend = (event: string, data: unknown) => void;
 
 const SSE_HEADERS = {
@@ -40,10 +47,14 @@ export function createSSEResponse(
 				await handler(send);
 			} catch (err) {
 				console.error(`${label} Stream error:`, err);
+				const userMessage =
+					err instanceof SSEUserError
+						? err.message
+						: "Something went wrong generating the PR. Please try again.";
 				try {
 					controller.enqueue(
 						encoder.encode(
-							`event: error\ndata: ${JSON.stringify({ message: err instanceof Error ? err.message : "Unexpected server error" })}\n\n`,
+							`event: error\ndata: ${JSON.stringify({ message: userMessage })}\n\n`,
 						),
 					);
 				} catch {
@@ -58,27 +69,58 @@ export function createSSEResponse(
 	return new Response(stream, { headers: SSE_HEADERS });
 }
 
+export interface CerebrasStreamResult {
+	text: string;
+	usage?: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+	};
+	timeInfo?: {
+		totalTime: number;
+	};
+}
+
 /**
  * Iterates a Cerebras streaming completion, sends each token as an SSE event,
- * and returns the accumulated raw text.
+ * and returns the accumulated text + usage stats from the final chunk.
  */
 export async function streamCerebrasTokens(
 	completion: AsyncIterable<unknown>,
 	send: SSESend,
-): Promise<string> {
+): Promise<CerebrasStreamResult> {
 	let accumulated = "";
+	let usage: CerebrasStreamResult["usage"];
+	let timeInfo: CerebrasStreamResult["timeInfo"];
+
 	for await (const chunk of completion) {
-		const delta = (
-			chunk as {
-				choices?: {
-					delta?: { content?: string | null };
-				}[];
-			}
-		).choices?.[0]?.delta?.content;
+		const typed = chunk as {
+			choices?: { delta?: { content?: string | null } }[];
+			usage?: {
+				prompt_tokens?: number;
+				completion_tokens?: number;
+				total_tokens?: number;
+			} | null;
+			time_info?: { total_time?: number } | null;
+		};
+
+		const delta = typed.choices?.[0]?.delta?.content;
 		if (delta) {
 			accumulated += delta;
 			send("token", { token: delta });
 		}
+
+		if (typed.usage?.total_tokens) {
+			usage = {
+				promptTokens: typed.usage.prompt_tokens ?? 0,
+				completionTokens: typed.usage.completion_tokens ?? 0,
+				totalTokens: typed.usage.total_tokens,
+			};
+		}
+		if (typed.time_info?.total_time) {
+			timeInfo = { totalTime: typed.time_info.total_time };
+		}
 	}
-	return accumulated;
+
+	return { text: accumulated, usage, timeInfo };
 }
