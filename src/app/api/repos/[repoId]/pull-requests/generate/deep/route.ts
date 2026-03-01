@@ -14,19 +14,15 @@ import {
 	NotFoundError,
 	UnauthorizedError,
 } from "@/lib/server/error";
-import { getCompareData } from "@/lib/server/github/compare";
 import { handleError } from "@/lib/server/handleError";
+import { checkWeeklyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
 import { redis } from "@/lib/server/redis/client";
-import { buildCompareCacheKey, buildSummaryCacheKey } from "@/lib/server/redis/compareCacheKey";
+import { buildSummaryCacheKey } from "@/lib/server/redis/compareCacheKey";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import {
-	aiLimiterPerMinute,
-	aiLimiterPerWeek,
-	githubCompareCommitsLimiter,
-} from "@/lib/server/redis/rate-limiters";
+import { aiLimiterPerMinute, aiLimiterPerWeek } from "@/lib/server/redis/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
-import { formatDateTimeForErrors } from "@/lib/utils/formatDateTime";
 import type { IPRResponse } from "@/types/pullRequests";
+
 
 export const dynamic = "force-dynamic";
 
@@ -83,45 +79,16 @@ export async function POST(
 
 		// 6. Fetch file diffs + commits (try prefetch cache first, fall back to GitHub)
 		const t0 = performance.now();
-		const cacheKey = buildCompareCacheKey(repoId, safeBase, safeCompare);
-
-		let files: Awaited<ReturnType<typeof getCompareData>>["files"];
-		let commits: string[] = [];
-		let cacheHit = false;
-
-		try {
-			const cached = await redis.get<string>(cacheKey);
-			if (cached) {
-				const data = JSON.parse(typeof cached === "string" ? cached : JSON.stringify(cached));
-				files = data.files;
-				if (data.commits?.length) {
-					commits = data.commits;
-				}
-				cacheHit = true;
-			}
-		} catch {
-			// Cache read failed — fall through to GitHub
-		}
-
-		if (!files) {
-			const ghLimit = await githubCompareCommitsLimiter.limit(
-				`github:compare:user:${user.id}`,
-			);
-			rateLimitOrThrow(ghLimit);
-
-			const compareData = await getCompareData(
-				repo.installation.installationId,
-				repo.owner,
-				repo.name,
-				safeBase,
-				safeCompare,
-			);
-			files = compareData.files;
-			commits = compareData.commits;
-		}
-
-		const t1 = performance.now();
-		console.log(`[DEEP] File diffs: ${(t1 - t0).toFixed(0)}ms (${cacheHit ? "cache hit" : "GitHub fetch"}, ${files?.length ?? 0} files)`);
+		const { files, commits, cacheHit } = await fetchCachedCompareData({
+			repoId,
+			baseBranch: safeBase,
+			compareBranch: safeCompare,
+			userId: user.id,
+			installationId: repo.installation.installationId,
+			repoOwner: repo.owner,
+			repoName: repo.name,
+		});
+		console.log(`[DEEP] File diffs: ${(performance.now() - t0).toFixed(0)}ms (${cacheHit ? "cache hit" : "GitHub fetch"}, ${files?.length ?? 0} files)`);
 
 		if (!files || files.length === 0) {
 			throw new BadRequestError("No file changes found between branches");
@@ -141,34 +108,9 @@ export async function POST(
 		rateLimitOrThrow(minuteLimit);
 
 		// 8. Owner-based weekly limit (check only, increment on success)
-		const owner = repo.members.find((m) => m.role === "owner");
-		if (!owner) throw new Error("No owner found for repository");
-
-		const weeklyLimitKey = `ai:week:user:${owner.userId}`;
-		const weeklyCheck = await aiLimiterPerWeek.getRemaining(weeklyLimitKey);
-
-		if (weeklyCheck.remaining <= 0) {
-			if (user.id === owner.userId) {
-				return NextResponse.json(
-					{
-						error: `Weekly PR generation limit reached. Resets on ${formatDateTimeForErrors(weeklyCheck.reset)}`,
-						rateLimit: {
-							weeklyRemaining: 0,
-							weeklyReset: weeklyCheck.reset,
-						},
-					},
-					{ status: 429 },
-				);
-			}
-
-			return NextResponse.json(
-				{
-					error:
-						"Repository owner weekly PR generation limit has been reached.",
-				},
-				{ status: 429 },
-			);
-		}
+		const weeklyResult = await checkWeeklyLimit(repo.members, user.id);
+		if (weeklyResult instanceof NextResponse) return weeklyResult;
+		const { weeklyLimitKey, isOwner } = weeklyResult;
 
 		// 9. Summarize diffs (stage 1) — cached to avoid re-summarizing on repeated generations
 		const t2 = performance.now();
@@ -267,7 +209,7 @@ export async function POST(
 
 			parsed.description = fixDescriptionHeaders(parsed.description);
 			const response: IPRResponse = { ...parsed };
-			if (user.id === owner.userId) {
+			if (isOwner) {
 				response.rateLimit = {
 					weeklyRemaining: weeklyLimit.remaining,
 					weeklyReset: weeklyLimit.reset,
