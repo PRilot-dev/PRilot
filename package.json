@@ -19,6 +19,7 @@
     "@types/lodash.debounce": "^4.0.9",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.1",
+    "@vercel/analytics": "^1.6.1",
     "argon2": "^0.44.0",
     "cookie": "^1.1.1",
     "jose": "^6.1.3",
