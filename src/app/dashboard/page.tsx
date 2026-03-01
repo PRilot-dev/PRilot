@@ -12,6 +12,7 @@ import AnimatedOpacity from "@/components/animations/AnimatedOpacity";
 import AnimatedScale from "@/components/animations/AnimatedScale";
 import AnimatedSlide from "@/components/animations/AnimatedSlide";
 import GithubAppButton from "@/components/buttons/GithubAppButton";
+import DashboardSkeleton from "@/components/skeletons/DashboardSkeleton";
 import {
 	Card,
 	CardContent,
@@ -20,7 +21,6 @@ import {
 	CardTitle,
 	StatCard,
 } from "@/components/ui/Card";
-import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import {
 	DashboardPRListItem,
 	DashboardRepoListItem,
@@ -277,7 +277,7 @@ export default function DashboardPage() {
 									className={`flex flex-col space-y-4 h-full ${recentPRs.length === 0 && !loading && "justify-center pt-8"}`}
 								>
 									{loading ? (
-										<AnimatedOpacity>
+										<AnimatedOpacity delay={0.15} className="space-y-4">
 											{/* -- PRs loading skeleton */}
 											<div className="h-18 w-full bg-gray-300 dark:bg-gray-700 rounded-lg animate-pulse" />
 											<div className="h-18 w-full bg-gray-300 dark:bg-gray-700 rounded-lg animate-pulse" />

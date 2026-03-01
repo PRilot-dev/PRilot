@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import fetch from "node-fetch";
 import sanitizeHtml from "sanitize-html";
 import z from "zod";
 import { getPrisma } from "@/db";

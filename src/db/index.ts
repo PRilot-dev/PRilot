@@ -2,18 +2,18 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client.ts";
 import { config } from "../lib/server/config.ts";
 
-let prisma: PrismaClient | null = null;
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 export function getPrisma() {
-  if (!prisma) {
+  if (!globalForPrisma.prisma) {
     const adapter = new PrismaPg({
       connectionString: config.db.url,
     });
 
-    prisma = new PrismaClient({ adapter });
+    globalForPrisma.prisma = new PrismaClient({ adapter });
   }
 
-  return prisma;
+  return globalForPrisma.prisma;
 }
 
 export * from "../generated/prisma/client.ts";

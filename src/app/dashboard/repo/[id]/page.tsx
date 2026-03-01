@@ -21,6 +21,7 @@ import { ConfirmDeletePRModal } from "@/components/modals/ConfirmDeletePRModal";
 import { DeleteRepoModal } from "@/components/modals/DeleteRepoModal";
 import { LeaveRepoModal } from "@/components/modals/LeaveRepoModal";
 import { PRFilterModal } from "@/components/modals/PRFilterModal";
+import RepoSkeleton from "@/components/skeletons/RepoSkeleton";
 import { Badge } from "@/components/ui/Badge";
 import {
 	Card,
@@ -32,7 +33,6 @@ import {
 } from "@/components/ui/Card";
 import { PRListItem } from "@/components/ui/ListItem";
 import { RepoAccessWarning } from "@/components/ui/RepoAccessWarning";
-import RepoSkeleton from "@/components/ui/RepoSkeleton";
 import { useRepos } from "@/contexts/ReposContext";
 import { useFetchPRs } from "@/hooks/useFetchPRs";
 import { usePullRequestActions } from "@/hooks/usePullRequestActions";
@@ -233,7 +233,7 @@ export default function RepositoryPage() {
 								<CardContent>
 									<div className="space-y-3">
 										{prLoading ? (
-											<AnimatedOpacity className="space-y-3">
+											<AnimatedOpacity delay={0.15} className="space-y-3">
 												{skeletonKeys.map((key) => (
 													<div
 														key={key}

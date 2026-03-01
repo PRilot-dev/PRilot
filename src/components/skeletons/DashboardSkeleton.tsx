@@ -1,7 +1,21 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: Ok to use index for key for skeleton component */
-import { Card, CardContent, CardHeader } from "./Card";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader } from "../ui/Card";
+
+const SKELETON_DELAY_MS = 150;
 
 export default function DashboardSkeleton() {
+	const [visible, setVisible] = useState(false);
+
+	useEffect(() => {
+		const timer = setTimeout(() => setVisible(true), SKELETON_DELAY_MS);
+		return () => clearTimeout(timer);
+	}, []);
+
+	if (!visible) return null;
+
 	return (
 		<div className="fade-in flex flex-col h-screen">
 			<div className="flex flex-col flex-1 animate-pulse">

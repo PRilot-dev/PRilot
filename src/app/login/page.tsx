@@ -6,11 +6,11 @@ import { toast } from "react-toastify";
 import z from "zod";
 import OAuthButtons from "@/components/buttons/OAuthButtons";
 import ThemeSwitcher from "@/components/navbar/ThemeSwitcher";
+import LoginSkeleton from "@/components/skeletons/LoginSkeleton";
 import AuthTabs from "@/components/ui/AuthTabs";
 import CodeVerification from "@/components/ui/CodeVerification";
 import EmailCodeForm from "@/components/ui/EmailCodeForm";
 import FormInput from "@/components/ui/FormInput";
-import LoginSkeleton from "@/components/ui/LoginSkeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { passwordValidationSchema } from "@/lib/schemas/auth.schema";
 

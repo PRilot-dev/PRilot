@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: index for key is ok for skeleton loader */
-import { CardContent, CardHeader } from "./Card";
+import { CardContent, CardHeader } from "../ui/Card";
 
 export default function RepoSkeleton() {
 	return (

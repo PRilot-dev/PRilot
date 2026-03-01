@@ -9,6 +9,7 @@ import { Button } from "@/components/buttons/Button";
 import { AddMemberModal } from "@/components/modals/AddMemberModal";
 import { DeleteMemberModal } from "@/components/modals/DeleteMemberModal";
 import { LeaveRepoModal } from "@/components/modals/LeaveRepoModal";
+import MemberPageSkeleton from "@/components/skeletons/MemberPageSkeleton";
 import { Badge } from "@/components/ui/Badge";
 import {
 	Card,
@@ -18,7 +19,6 @@ import {
 	CardTitle,
 } from "@/components/ui/Card";
 import { MemberListItem } from "@/components/ui/ListItem";
-import MemberPageSkeleton from "@/components/ui/MemberPageSkeleton";
 import { useRepos } from "@/contexts/ReposContext";
 import { useUser } from "@/contexts/UserContext";
 import { useRepository } from "@/hooks/useRepository";

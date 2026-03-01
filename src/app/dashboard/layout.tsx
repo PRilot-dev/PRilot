@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import AppNavbar from "@/components/navbar/AppNavbar";
-import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
+import DashboardSkeleton from "@/components/skeletons/DashboardSkeleton";
 import { InstallationsProvider } from "@/contexts/InstallationContext";
 import { ReposProvider } from "@/contexts/ReposContext";
 import { useUser } from "@/contexts/UserContext";

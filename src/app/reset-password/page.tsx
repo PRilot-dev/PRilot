@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import ThemeSwitcher from "@/components/navbar/ThemeSwitcher";
-import LoginSkeleton from "@/components/ui/LoginSkeleton";
+import LoginSkeleton from "@/components/skeletons/LoginSkeleton";
 import { useUser } from "@/contexts/UserContext";
 
 export default function ResetPasswordPage() {
