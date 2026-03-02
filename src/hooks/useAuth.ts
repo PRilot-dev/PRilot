@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useUser } from "@/contexts/UserContext";
@@ -8,7 +8,6 @@ import { useUser } from "@/contexts/UserContext";
 type AuthMode = "password" | "code";
 
 export function useAuth() {
-	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { user, setUser, loading: userLoading } = useUser();
 
@@ -22,12 +21,12 @@ export function useAuth() {
 	const [codeSent, setCodeSent] = useState(false);
 	const [code, setCode] = useState("");
 
-	// Route guard
+	// Route guard — redirect to dashboard when user is authenticated
 	useEffect(() => {
 		if (!userLoading && user) {
-			router.replace("/dashboard");
+			window.location.href = "/dashboard";
 		}
-	}, [userLoading, user, router]);
+	}, [userLoading, user]);
 
 	// Send email code
 	const handleSendCode = async (e: React.FormEvent) => {
@@ -81,7 +80,6 @@ export function useAuth() {
 			}
 
 			setUser(data.user);
-			router.push("/dashboard");
 			toast.success(data.isNewUser ? "Welcome to PRilot!" : "Welcome back!");
 		} catch {
 			toast.error("An unexpected error occurred");
@@ -110,7 +108,6 @@ export function useAuth() {
 		user,
 		userLoading,
 		setUser,
-		router,
 		handleSendCode,
 		handleVerifyCode,
 		resetCode,

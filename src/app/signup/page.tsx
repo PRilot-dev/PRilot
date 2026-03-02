@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import z from "zod";
 import OAuthButtons from "@/components/buttons/OAuthButtons";
 import ThemeSwitcher from "@/components/navbar/ThemeSwitcher";
+import LoadingSpinner from "@/components/skeletons/LoadingSpinner";
 import LoginSkeleton from "@/components/skeletons/LoginSkeleton";
 import AuthTabs from "@/components/ui/AuthTabs";
 import CodeVerification from "@/components/ui/CodeVerification";
@@ -28,7 +29,6 @@ export default function SignupPage() {
 		user,
 		userLoading,
 		setUser,
-		router,
 		handleSendCode,
 		handleVerifyCode,
 		resetCode,
@@ -90,7 +90,6 @@ export default function SignupPage() {
 			}
 
 			setUser(data.user);
-			router.push("/dashboard");
 			toast.success("Welcome to PRilot!");
 		} catch (err) {
 			if (err instanceof z.ZodError) {
@@ -105,7 +104,17 @@ export default function SignupPage() {
 		}
 	};
 
-	if (userLoading || user) return <LoginSkeleton />;
+	if (userLoading) return <LoginSkeleton />;
+
+	if (user)
+		return (
+			<div className="flex flex-col items-center justify-center gap-4 min-h-screen bg-linear-to-b from-blue-100 to-white dark:from-zinc-950 dark:to-[#13131d]">
+				<LoadingSpinner />
+				<p className="text-2xl text-gray-500 dark:text-gray-400 animate-pulse">
+					Logging you in...
+				</p>
+			</div>
+		);
 
 	return (
 		<div className="flex justify-center items-center min-h-screen bg-linear-to-b from-blue-100 to-white dark:from-zinc-950 dark:to-[#13131d]">
