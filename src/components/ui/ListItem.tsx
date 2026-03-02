@@ -69,6 +69,7 @@ export function DashboardPRListItem({
 				{status === "draft" && (
 					<Link
 						href={`/dashboard/repo/${repoId}/pr/edit/${prId}`}
+						prefetch={false}
 						className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline self-end"
 					>
 						Edit
@@ -118,6 +119,7 @@ export function DashboardRepoListItem({
 				<div className="flex items-center gap-2">
 					<Link
 						href={`/dashboard/repo/${repoId}`}
+						prefetch={false}
 						className="text-sm text-gray-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
 					>
 						{firstCharUpperCase(name)}
@@ -131,6 +133,7 @@ export function DashboardRepoListItem({
 			<div className="flex flex-col items-end pt-0.5">
 				<Link
 					href={`/dashboard/repo/${repoId}`}
+					prefetch={false}
 					className="flex items-center gap-1.5 px-3 py-1 text-xs text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
 				>
 					Open repo
@@ -138,6 +141,7 @@ export function DashboardRepoListItem({
 				</Link>
 				<Link
 					href={`/dashboard/repo/${repoId}/pr/new`}
+					prefetch={false}
 					className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
 				>
 					<Sparkles size={14} />
