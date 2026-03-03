@@ -51,6 +51,9 @@ export async function GET(
 		if (pr.repositoryId !== repoId) {
 			throw new BadRequestError("PR does not belong to this repository");
 		}
+		if (pr.repository.status === "deleted") {
+			throw new NotFoundError("Repository not found");
+		}
 
 		// 5. Check membership
 		const membership = pr.repository.members[0];
@@ -114,6 +117,9 @@ export async function PATCH(
 		if (!pr) throw new NotFoundError("PR not found");
 		if (pr.repositoryId !== repoId) {
 			throw new BadRequestError("PR does not belong to this repository");
+		}
+		if (pr.repository.status === "deleted") {
+			throw new NotFoundError("Repository not found");
 		}
 
 		// 6. Check membership
@@ -188,6 +194,9 @@ export async function DELETE(
 		if (!pr) throw new NotFoundError("PR not found");
 		if (pr.repositoryId !== repoId) {
 			throw new BadRequestError("PR does not belong to this repository");
+		}
+		if (pr.repository.status === "deleted") {
+			throw new NotFoundError("Repository not found");
 		}
 
 		// 5. Check membership

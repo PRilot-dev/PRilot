@@ -49,6 +49,9 @@ export async function POST(
 		if (prDraft.repositoryId !== repoId) {
 			throw new BadRequestError("PR does not belong to this repository");
 		}
+		if (prDraft.repository.status === "deleted") {
+			throw new NotFoundError("Repository not found");
+		}
 
 		// 4. Check permissions
 		const membership = prDraft.repository.members.find(
