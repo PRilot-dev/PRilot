@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import DashboardShell from "./DashboardShell";
 
 export const metadata: Metadata = {
 	robots: {
@@ -8,10 +7,10 @@ export const metadata: Metadata = {
 	},
 };
 
-export default function DashboardLayout({
+export default function AuthLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	return <DashboardShell>{children}</DashboardShell>;
+	return children;
 }

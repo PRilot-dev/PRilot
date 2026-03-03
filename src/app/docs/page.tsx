@@ -2,9 +2,12 @@ import AdaptiveNavbar from "@/components/navbar/AdaptiveNavbar";
 import DocsSidebar from "@/components/navbar/DocsSidebar";
 
 export const metadata = {
-	title: "Documentation – PRilot",
+	title: "Documentation",
 	description:
 		"Learn how to connect GitHub, manage repositories, generate and send pull requests with PRilot.",
+	alternates: {
+		canonical: "/docs",
+	},
 };
 
 function Step({

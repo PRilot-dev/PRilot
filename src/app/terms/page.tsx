@@ -2,8 +2,11 @@ import Link from "next/link";
 import AdaptiveNavbar from "@/components/navbar/AdaptiveNavbar";
 
 export const metadata = {
-	title: "Terms of Service – PRilot",
+	title: "Terms of Service",
 	description: "Read the terms and conditions governing your use of PRilot.",
+	alternates: {
+		canonical: "/terms",
+	},
 };
 
 export default function TermsPage() {

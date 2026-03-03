@@ -1,8 +1,11 @@
 import AdaptiveNavbar from "@/components/navbar/AdaptiveNavbar";
 
 export const metadata = {
-	title: "Privacy Policy – PRilot",
+	title: "Privacy Policy",
 	description: "Learn how PRilot collects, uses, and protects your data.",
+	alternates: {
+		canonical: "/privacy",
+	},
 };
 
 export default function PrivacyPage() {

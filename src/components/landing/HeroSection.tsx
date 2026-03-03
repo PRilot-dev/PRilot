@@ -160,7 +160,7 @@ export default function HeroSection() {
 									<button
 										type="button"
 										className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-										title="Help"
+										aria-label="Help"
 									>
 										<HelpCircle className="w-4 h-4 text-gray-500 dark:text-gray-400" />
 									</button>
