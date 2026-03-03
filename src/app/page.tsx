@@ -60,15 +60,17 @@ export default function LandingPage() {
 				{JSON.stringify([organizationJsonLd, softwareJsonLd, faqJsonLd])}
 			</script>
 			<LandingNavbar />
-			<HeroSection />
-			<FeaturesSection />
-			<BenefitsSection />
-			<HowItWorksSection />
-			<WorkflowSection />
-			<ConsistencySection />
-			<ExampleSection />
-			<FAQSection />
-			<CTASection />
+			<main>
+				<HeroSection />
+				<FeaturesSection />
+				<BenefitsSection />
+				<HowItWorksSection />
+				<WorkflowSection />
+				<ConsistencySection />
+				<ExampleSection />
+				<FAQSection />
+				<CTASection />
+			</main>
 			<LandingFooter />
 		</div>
 	);

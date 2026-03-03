@@ -84,6 +84,7 @@ export default function LandingNavbar() {
 								type="button"
 								onClick={() => setMobileOpen(!mobileOpen)}
 								className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+								aria-label="Toggle navigation menu"
 							>
 								{mobileOpen ? (
 									<X className="w-5 h-5" />

@@ -21,9 +21,9 @@ export default function LandingFooter() {
 
 					{/* Product links */}
 					<div>
-						<h4 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
+						<h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
 							Product
-						</h4>
+						</h3>
 						<ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
 							<li>
 								<a
@@ -62,9 +62,9 @@ export default function LandingFooter() {
 
 					{/* Account links */}
 					<div>
-						<h4 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
+						<h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
 							Account
-						</h4>
+						</h3>
 						<ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
 							<li>
 								<Link
@@ -87,9 +87,9 @@ export default function LandingFooter() {
 
 				{/* Legal links */}
 				<div>
-					<h4 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
+					<h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
 						Legal
-					</h4>
+					</h3>
 					<ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
 						<li>
 							<Link
