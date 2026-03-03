@@ -102,9 +102,8 @@ export function PREditor({
 						? "Please enter title and description to send PR"
 						: ""
 				}
-				className={`w-full md:w-1/2 h-10 my-4 mx-auto flex justify-center items-center rounded-lg
-            shadow-lg bg-gray-100 dark:bg-zinc-950/60 border border-gray-300 dark:border-gray-800
-            ${!title || !description || isSendingPr ? "cursor-not-allowed opacity-60" : "hover:bg-gray-200 hover:dark:bg-gray-800 hover:cursor-pointer"}
+				className={`h-auto w-full md:w-1/2 mx-auto my-4 py-2 flex items-center justify-center shadow-lg rounded-lg bg-gray-900 text-white dark:bg-gray-200 dark:text-black hover:bg-gray-700 hover:dark:bg-gray-300 group
+            ${!title || !description || isSendingPr ? "cursor-not-allowed opacity-60" : "hover:bg-gray-700 hover:dark:bg-gray-300 hover:cursor-pointer"}
           `}
 			>
 				<Send className="w-4 h-4 mr-2" />
