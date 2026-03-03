@@ -92,3 +92,11 @@ It analyzes commit differences between branches and **automatically generates pu
    ```
 
 7. Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+---
+
+## 🔑 License 
+
+This project is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).
+
+You are free to use, modify, and distribute this software. However, if you run a modified version of PRilot as a network service, you must make the source code of your modified version available to its users under the same license.
