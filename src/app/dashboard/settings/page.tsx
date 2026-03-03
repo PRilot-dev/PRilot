@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, Github, Gitlab, Lock, XCircle } from "lucide-react";
+import { CircleCheck, Github, Gitlab, Lock, LogOut, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import AnimatedScale from "@/components/animations/AnimatedScale";
@@ -24,6 +24,24 @@ export default function UserSettingsPage() {
 	const { user } = useUser();
 	const { installations } = useInstallations();
 	const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+	const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
+
+	const handleLogoutAll = async () => {
+		setIsLoggingOutAll(true);
+		try {
+			const res = await fetch("/api/auth/logout-all", {
+				method: "POST",
+				credentials: "include",
+			});
+			if (!res.ok) throw new Error();
+			toast.success("All sessions have been terminated.");
+			window.location.href = "/login";
+		} catch {
+			toast.error("Failed to logout all devices.");
+		} finally {
+			setIsLoggingOutAll(false);
+		}
+	};
 
 	// User object is guaranteed to be present due to route guard in layout.tsx
 	if (!user) return null;
@@ -202,6 +220,30 @@ export default function UserSettingsPage() {
 								icon={<Gitlab />}
 								className="lg:ml-8"
 							/>
+						</CardContent>
+					</Card>
+				</AnimatedScale>
+
+				{/* Sessions */}
+				<AnimatedScale scale={0.96} triggerOnView={false}>
+					<Card>
+						<CardHeader>
+							<CardTitle>Sessions</CardTitle>
+							<CardDescription>
+								If you suspect your account has been compromised, log out of all
+								devices to revoke every active session.
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<button
+								type="button"
+								onClick={handleLogoutAll}
+								disabled={isLoggingOutAll}
+								className="w-full md:w-fit flex justify-center items-center gap-2 h-10 px-4 md:px-8 my-4 rounded-lg bg-red-600 text-white hover:cursor-pointer hover:opacity-90 disabled:opacity-50"
+							>
+								<LogOut size={16} />
+								{isLoggingOutAll ? "Logging out..." : "Logout all devices"}
+							</button>
 						</CardContent>
 					</Card>
 				</AnimatedScale>

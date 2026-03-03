@@ -59,6 +59,11 @@ export async function PATCH(req: Request) {
 			data: { password: hashedPassword },
 		});
 
+		// 8. Invalidate all sessions (force re-login on all devices)
+		await prisma.refreshToken.deleteMany({
+			where: { userId: user.id },
+		});
+
 		return NextResponse.json({ message: "Password updated successfully" });
 	} catch (error) {
 		return handleError(error);
