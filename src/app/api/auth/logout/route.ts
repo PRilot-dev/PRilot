@@ -1,26 +1,21 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/db";
-import { UnauthorizedError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { decodeJWT, extractAccessToken } from "@/lib/server/token";
 
 const prisma = getPrisma();
 
 export async function POST() {
   try {
-    // Extract & decode access token
-    const accessToken = await extractAccessToken();
-    const payload = await decodeJWT(accessToken);
+    // Delete only the current session's refresh token
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get("refreshToken")?.value;
 
-    const userId = payload.userId as string;
-    if (!userId) {
-      throw new UnauthorizedError("Unauthenticated user");
+    if (refreshToken) {
+      await prisma.refreshToken.delete({
+        where: { token: refreshToken },
+      }).catch(() => {});
     }
-
-    // Delete refresh tokens from DB
-    await prisma.refreshToken.deleteMany({
-      where: { userId },
-    });
 
     // Clear cookies
     const response = new NextResponse(null, { status: 204 });

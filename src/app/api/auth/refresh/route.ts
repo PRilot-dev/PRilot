@@ -42,7 +42,8 @@ export async function POST() {
     const user = await prisma.user.findUnique({ where: { id: stored.userId } });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 401 });
 
-    // 5. Rotate tokens (new access + new refresh, old refresh is invalidated)
+    // 5. Rotate tokens (delete current refresh token, generate new pair)
+    await prisma.refreshToken.delete({ where: { id: stored.id } });
     const newAccessToken = await generateAccessToken(user);
     const newRefreshToken = await generateRefreshToken(user);
 

@@ -55,8 +55,9 @@ export async function generateAccessToken(user: User) {
 export async function generateRefreshToken(user: User) {
   const refreshToken = crypto.randomBytes(64).toString("base64");
 
+  // Clean up expired tokens for this user
   await prisma.refreshToken.deleteMany({
-    where: { userId: user.id },
+    where: { userId: user.id, expiresAt: { lt: new Date() } },
   });
 
   await prisma.refreshToken.create({
