@@ -4,16 +4,16 @@ import { getPrisma } from "@/db";
 import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
-import { cerebras } from "@/lib/server/ai/client";
+import { groq } from "@/lib/server/ai/client";
 import { buildPRFromDiffs, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
-import { createSSEResponse, streamCerebrasTokens } from "@/lib/server/ai/streamSSE";
-import { prepareFileDiffForAI } from "@/lib/server/github/fileDiffs";
+import { createSSEResponse, streamGroqTokens } from "@/lib/server/ai/streamSSE";
 import {
 	BadRequestError,
 	ForbiddenError,
 	NotFoundError,
 	UnauthorizedError,
 } from "@/lib/server/error";
+import { prepareFileDiffForAI } from "@/lib/server/github/fileDiffs";
 import { handleError } from "@/lib/server/handleError";
 import { checkMonthlyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
@@ -93,9 +93,9 @@ export async function POST(
 			throw new BadRequestError("No file changes found between branches");
 		}
 
-		if (totalChanges > 2000) {
+		if (totalChanges > 500) {
 			throw new BadRequestError(
-				"Too many lines changed (max 2000 for deep mode). Please use fast mode instead.",
+				"Too many lines changed (max 500 for deep mode). Please use fast mode instead.",
 			);
 		}
 
@@ -118,8 +118,8 @@ export async function POST(
 		// 10. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
 			async function streamGeneration() {
-				const completion = await cerebras.chat.completions.create({
-					model: "gpt-oss-120b",
+				const completion = await groq.chat.completions.create({
+					model: "openai/gpt-oss-120b",
 					messages: [
 						{
 							role: "system",
@@ -130,26 +130,19 @@ export async function POST(
 							content: `File diffs:\n${rawDiffs}${commits.length > 0 ? `\n\nCommit messages:\n${commits.map((c) => `- ${c}`).join("\n")}` : ""}`,
 						},
 					],
-					response_format: {
-						type: "json_schema",
-						json_schema: {
-							name: "json",
-							schema: { title: "", description: "" },
-						},
-					},
+					response_format: { type: "json_object" },
 					stream: true,
-					temperature: 0.4,
-					reasoning_effort: "low",
+					temperature: 0.4
 				});
 
-				return streamCerebrasTokens(completion, send);
+				return streamGroqTokens(completion, send);
 			}
 
 			// First attempt
 			const t4 = performance.now();
 			let result = await streamGeneration();
 			console.log(
-				`[DEEP] PR generation streamed (Cerebras): ${(performance.now() - t4).toFixed(0)}ms | tokens: ${result.usage?.promptTokens ?? "?"}in/${result.usage?.completionTokens ?? "?"}out/${result.usage?.totalTokens ?? "?"}total`,
+				`[DEEP] PR generation streamed (Groq): ${(performance.now() - t4).toFixed(0)}ms | tokens: ${result.usage?.promptTokens ?? "?"}in/${result.usage?.completionTokens ?? "?"}out/${result.usage?.totalTokens ?? "?"}total`,
 			);
 
 			let parsed = JSON.parse(result.text) as IPRResponse;

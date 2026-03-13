@@ -191,12 +191,12 @@ export default function PrivacyPage() {
 						<div className="space-y-3">
 							<div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
 								<p className="font-semibold text-gray-900 dark:text-white">
-									Cerebras AI
+									Groq AI
 								</p>
 								<p className="text-sm mt-1">
 									Our AI inference provider. Commit messages and code diffs are
-									transmitted to Cerebras solely to generate PR titles and
-									descriptions. Cerebras does not retain your data beyond the
+									transmitted to Groq solely to generate PR titles and
+									descriptions. Groq does not retain your data beyond the
 									inference request.
 								</p>
 							</div>

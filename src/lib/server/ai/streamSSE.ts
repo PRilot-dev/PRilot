@@ -69,39 +69,36 @@ export function createSSEResponse(
 	return new Response(stream, { headers: SSE_HEADERS });
 }
 
-export interface CerebrasStreamResult {
+export interface GroqStreamResult {
 	text: string;
 	usage?: {
 		promptTokens: number;
 		completionTokens: number;
 		totalTokens: number;
 	};
-	timeInfo?: {
-		totalTime: number;
-	};
 }
 
 /**
- * Iterates a Cerebras streaming completion, sends each token as an SSE event,
+ * Iterates a Groq streaming completion, sends each token as an SSE event,
  * and returns the accumulated text + usage stats from the final chunk.
  */
-export async function streamCerebrasTokens(
+export async function streamGroqTokens(
 	completion: AsyncIterable<unknown>,
 	send: SSESend,
-): Promise<CerebrasStreamResult> {
+): Promise<GroqStreamResult> {
 	let accumulated = "";
-	let usage: CerebrasStreamResult["usage"];
-	let timeInfo: CerebrasStreamResult["timeInfo"];
+	let usage: GroqStreamResult["usage"];
 
 	for await (const chunk of completion) {
 		const typed = chunk as {
 			choices?: { delta?: { content?: string | null } }[];
-			usage?: {
-				prompt_tokens?: number;
-				completion_tokens?: number;
-				total_tokens?: number;
-			} | null;
-			time_info?: { total_time?: number } | null;
+			x_groq?: {
+				usage?: {
+					prompt_tokens?: number;
+					completion_tokens?: number;
+					total_tokens?: number;
+				};
+			};
 		};
 
 		const delta = typed.choices?.[0]?.delta?.content;
@@ -110,17 +107,14 @@ export async function streamCerebrasTokens(
 			send("token", { token: delta });
 		}
 
-		if (typed.usage?.total_tokens) {
+		if (typed.x_groq?.usage?.total_tokens) {
 			usage = {
-				promptTokens: typed.usage.prompt_tokens ?? 0,
-				completionTokens: typed.usage.completion_tokens ?? 0,
-				totalTokens: typed.usage.total_tokens,
+				promptTokens: typed.x_groq.usage.prompt_tokens ?? 0,
+				completionTokens: typed.x_groq.usage.completion_tokens ?? 0,
+				totalTokens: typed.x_groq.usage.total_tokens,
 			};
-		}
-		if (typed.time_info?.total_time) {
-			timeInfo = { totalTime: typed.time_info.total_time };
 		}
 	}
 
-	return { text: accumulated, usage, timeInfo };
+	return { text: accumulated, usage };
 }

@@ -20,8 +20,8 @@ const envSchema = z.object({
 		.string()
 		.min(1, "GITHUB_APP_PRIVATE_KEY is required"),
 
-	// Cerebras
-	CEREBRAS_API_KEY: z.string().min(1, "CEREBRAS_API_KEY is required"),
+	// Groq
+	GROQ_API_KEY: z.string().min(1, "GROQ_API_KEY is required"),
 
 	// Resend
 	RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
@@ -66,8 +66,8 @@ export const config = {
 		appPrivateKey: parsedEnv.GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, "\n"),
 		redirectUri: `${parsedEnv.FRONTEND_URL}/login/github/callback`,
 	},
-	cerebras: {
-		apiKey: parsedEnv.CEREBRAS_API_KEY,
+	groq: {
+		apiKey: parsedEnv.GROQ_API_KEY,
 	},
 	resend: {
 		apiKey: parsedEnv.RESEND_API_KEY,

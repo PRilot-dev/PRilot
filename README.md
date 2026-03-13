@@ -28,7 +28,7 @@ It analyzes commit differences between branches and **automatically generates pu
 | **Frontend** | Next.js 16, React 19, Tailwind CSS v4, Framer Motion, Zustand, Lucide Icons |
 | **Backend** | Next.js API Routes, Zod validation |
 | **Database** | PostgreSQL, Prisma ORM |
-| **AI** | Cerebras Cloud SDK |
+| **AI** | Groq SDK |
 | **Auth** | JWT (jose), Argon2 password hashing |
 | **Caching & Rate Limiting** | Upstash Redis |
 | **Email** | Resend |

@@ -4,9 +4,9 @@ import { getPrisma } from "@/db";
 import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
-import { cerebras } from "@/lib/server/ai/client";
+import { groq } from "@/lib/server/ai/client";
 import { buildPRFromCommits, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
-import { createSSEResponse, streamCerebrasTokens } from "@/lib/server/ai/streamSSE";
+import { createSSEResponse, streamGroqTokens } from "@/lib/server/ai/streamSSE";
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -102,8 +102,8 @@ export async function POST(
 		// 10. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
 			const t0 = performance.now();
-			const completion = await cerebras.chat.completions.create({
-				model: "gpt-oss-120b",
+			const completion = await groq.chat.completions.create({
+				model: "openai/gpt-oss-120b",
 				messages: [
 					{
 						role: "system",
@@ -116,21 +116,14 @@ export async function POST(
 							.join("\n"),
 					},
 				],
-				response_format: {
-					type: "json_schema",
-					json_schema: {
-						name: "json",
-						schema: { title: "", description: "" },
-					},
-				},
+				response_format: { type: "json_object" },
 				stream: true,
-				reasoning_effort: "low",
-				temperature: 0.4,
+				temperature: 0.4
 			});
 
-			const { text, usage } = await streamCerebrasTokens(completion, send);
+			const { text, usage } = await streamGroqTokens(completion, send);
 			console.log(
-				`[FAST] PR generation streamed (Cerebras): ${(performance.now() - t0).toFixed(0)}ms | tokens: ${usage?.promptTokens ?? "?"}in/${usage?.completionTokens ?? "?"}out/${usage?.totalTokens ?? "?"}total`,
+				`[FAST] PR generation streamed (Groq): ${(performance.now() - t0).toFixed(0)}ms | tokens: ${usage?.promptTokens ?? "?"}in/${usage?.completionTokens ?? "?"}out/${usage?.totalTokens ?? "?"}total`,
 			);
 
 			const parsed = JSON.parse(text) as IPRResponse;
