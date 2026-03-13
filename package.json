@@ -12,7 +12,10 @@
     "db:reset": "prisma migrate reset",
     "db:seed": "node --env-file=.env ./src/db/seed.ts",
     "db:migrate:name": "npx prisma migrate dev --name",
-    "db:migrate": "npx prisma migrate dev"
+    "db:migrate": "npx prisma migrate dev",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@cerebras/cerebras_cloud_sdk": "^1.64.1",
@@ -47,12 +50,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/sanitize-html": "^2.16.0",
+    "@vitest/coverage-v8": "^4.1.0",
     "babel-plugin-react-compiler": "1.0.0",
     "dotenv": "^17.2.3",
     "prisma": "^7.3.0",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   },
   "overrides": {
     "hono": "^4.12.2",
