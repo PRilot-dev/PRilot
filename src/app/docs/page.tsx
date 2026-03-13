@@ -344,7 +344,7 @@ export default function DocsPage() {
 											raw file diffs and commit messages
 										</span>{" "}
 										for a more detailed and accurate description. Limited to
-										2000 lines changed.
+										500 lines changed.
 									</p>
 								</div>
 							</div>

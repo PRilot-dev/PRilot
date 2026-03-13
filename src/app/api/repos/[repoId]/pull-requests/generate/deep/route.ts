@@ -93,9 +93,9 @@ export async function POST(
 			throw new BadRequestError("No file changes found between branches");
 		}
 
-		if (totalChanges > 2000) {
+		if (totalChanges > 500) {
 			throw new BadRequestError(
-				"Too many lines changed (max 2000 for deep mode). Please use fast mode instead.",
+				"Too many lines changed (max 500 for deep mode). Please use fast mode instead.",
 			);
 		}
 
