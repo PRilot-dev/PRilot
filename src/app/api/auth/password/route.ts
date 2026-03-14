@@ -40,7 +40,7 @@ export async function PATCH(req: Request) {
 
 		if (!dbUser?.password) {
 			throw new BadRequestError(
-				"No password set on this account. Use POST to set one.",
+				"No password set on this account. Use the set password form instead.",
 			);
 		}
 
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
 		if (dbUser?.password) {
 			throw new BadRequestError(
-				"Password already set. Use PATCH to change it.",
+				"Password already set. Use the change password form instead.",
 			);
 		}
 
