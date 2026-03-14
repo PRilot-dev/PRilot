@@ -25,6 +25,7 @@ import "./mocks/auth";
 import "./mocks/redis";
 import "./mocks/email";
 import "./mocks/github";
+import "./mocks/ai";
 
 // Re-export redisStore so existing tests can import it from setup
 export { redisStore } from "./mocks/redis";

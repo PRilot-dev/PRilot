@@ -5,7 +5,12 @@ vi.mock("@/lib/server/github/client", () => ({
 	githubFetch: vi.fn(),
 }));
 
-// GitHub compare — used by compare-commits route
+// GitHub compare — used by compare-commits route and prefetch
 vi.mock("@/lib/server/github/compare", () => ({
-	getCompareData: vi.fn().mockResolvedValue({ commits: [] }),
+	getCompareData: vi.fn().mockResolvedValue({ commits: [], files: [] }),
+}));
+
+// GitHub file diffs — used by deep generation route
+vi.mock("@/lib/server/github/fileDiffs", () => ({
+	prepareFileDiffForAI: vi.fn().mockReturnValue({ patch: "mock diff content" }),
 }));
