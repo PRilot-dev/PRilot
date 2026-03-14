@@ -166,11 +166,39 @@ vi.mock("@/lib/server/github/client", () => ({
 
 // ---------------------------------------------------------------------------
 // Resend email — no real emails sent in tests
+// Each email module is mocked at its actual import path so deep imports
+// (e.g. @/lib/server/resend/emails/passwordReset) are properly intercepted.
 // ---------------------------------------------------------------------------
-vi.mock("@/lib/server/resend", () => ({
-	sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+vi.mock("@/lib/server/resend/client", () => ({
+	resend: { emails: { send: vi.fn().mockResolvedValue({ id: "mock-email-id" }) } },
+}));
+
+vi.mock("@/lib/server/resend/emails/passwordReset", () => ({
 	sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/server/resend/emails/verificationCode", () => ({
 	sendEmailCode: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/server/resend/emails/repoInvite", () => ({
+	sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/server/resend/emails/memberLeft", () => ({
+	sendMemberLeftEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/server/resend/emails/memberRemoved", () => ({
+	sendMemberRemovedEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/server/resend/emails/InvitationDeclined", () => ({
+	sendInvitationDeclinedEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/server/resend/emails/invitationAccepted", () => ({
+	sendInvitationAcceptedEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ---------------------------------------------------------------------------
