@@ -92,3 +92,24 @@ export async function seedPullRequest({
 		},
 	});
 }
+
+/** Valid branch body for generate routes (fast/deep/prefetch). */
+export function validBranchBody(overrides: Record<string, unknown> = {}) {
+	return {
+		baseBranch: "main",
+		compareBranch: "feature/login",
+		language: "English",
+		...overrides,
+	};
+}
+
+/** Valid body for draft PR creation. */
+export function validDraftBody(overrides: Record<string, unknown> = {}) {
+	return {
+		prTitle: "Add login feature",
+		prBody: "This PR adds the login feature with OAuth support.",
+		baseBranch: "main",
+		compareBranch: "feature/login",
+		...overrides,
+	};
+}
