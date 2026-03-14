@@ -1,5 +1,10 @@
 /**
- * Reusable helpers for mocking GitHub API responses in tests.
+ * Reusable helpers for mocking GitHub **OAuth** API responses in tests.
+ *
+ * This is separate from the `mocks/github.ts` vi.mock which replaces the
+ * internal `@/lib/server/github/client` (`githubFetch`) wrapper used by most
+ * routes. The OAuth callback route calls `globalThis.fetch` directly to hit
+ * GitHub's token exchange and user endpoints, so we need a fetch-level spy.
  *
  * Usage:
  *   import { mockGitHubApiFetch, GITHUB_USER, restoreFetchSpy } from "@/tests/helpers/github"
