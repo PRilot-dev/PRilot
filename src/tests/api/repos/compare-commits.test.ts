@@ -32,7 +32,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 		const ctx = buildParams({ repoId: repository.id });
 
 		// ACT
-		const res = await GET(req as never, ctx);
+		const res = await GET(req, ctx);
 		const data = await parseJson<{ commits: { sha: string }[] }>(res);
 
 		// ASSERT
@@ -50,7 +50,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 		const ctx = buildParams({ repoId: repository.id });
 
 		// ACT
-		const res = await GET(req as never, ctx);
+		const res = await GET(req, ctx);
 		const data = await parseJson(res);
 
 		// ASSERT
@@ -67,7 +67,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 		const ctx = buildParams({ repoId: fakeId });
 
 		// ACT
-		const res = await GET(req as never, ctx);
+		const res = await GET(req, ctx);
 		const data = await parseJson(res);
 
 		// ASSERT
@@ -84,7 +84,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 		const ctx = buildParams({ repoId: repository.id });
 
 		// ACT
-		const res = await GET(req as never, ctx);
+		const res = await GET(req, ctx);
 
 		// ASSERT
 		expect(res.status).toBe(422);
@@ -97,7 +97,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 		const ctx = buildParams({ repoId: fakeId });
 
 		// ACT
-		const res = await GET(req as never, ctx);
+		const res = await GET(req, ctx);
 
 		// ASSERT
 		expect(res.status).toBe(403);

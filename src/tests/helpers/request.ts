@@ -7,6 +7,8 @@
  *   const data = await parseJson(res)
  */
 
+import { NextRequest } from "next/server";
+
 type RequestOptions = {
 	body?: unknown;
 	headers?: Record<string, string>;
@@ -15,13 +17,13 @@ type RequestOptions = {
 };
 
 /**
- * Build a `Request` that matches what Next.js route handlers receive.
+ * Build a `NextRequest` that matches what Next.js route handlers receive.
  */
 export function buildRequest(
 	method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
 	path: string,
 	options: RequestOptions = {},
-): Request {
+): NextRequest {
 	const { body, headers = {}, ip = "127.0.0.1" } = options;
 
 	const url = `http://localhost:3000${path}`;
@@ -39,7 +41,7 @@ export function buildRequest(
 		init.body = JSON.stringify(body);
 	}
 
-	return new Request(url, init);
+	return new NextRequest(url, init as ConstructorParameters<typeof NextRequest>[1]);
 }
 
 /**
