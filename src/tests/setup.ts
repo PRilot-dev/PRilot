@@ -127,6 +127,47 @@ vi.mock("@/lib/server/password", () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Redis client — in-memory Map that mimics Upstash Redis for tests.
+// The store is exported so tests can pre-populate or inspect values.
+// ---------------------------------------------------------------------------
+export const redisStore = new Map<string, { value: string; expireAt?: number }>();
+
+vi.mock("@/lib/server/redis/client", () => ({
+	redis: {
+		set: vi.fn().mockImplementation(
+			(key: string, value: string, opts?: { ex?: number; keepTtl?: boolean }) => {
+				const existing = redisStore.get(key);
+				const expireAt =
+					opts?.keepTtl && existing?.expireAt
+						? existing.expireAt
+						: opts?.ex
+							? Date.now() + opts.ex * 1000
+							: undefined;
+				redisStore.set(key, { value, expireAt });
+				return Promise.resolve("OK");
+			},
+		),
+		get: vi.fn().mockImplementation((key: string) => {
+			const entry = redisStore.get(key);
+			if (!entry) return Promise.resolve(null);
+			if (entry.expireAt && entry.expireAt < Date.now()) {
+				redisStore.delete(key);
+				return Promise.resolve(null);
+			}
+			try {
+				return Promise.resolve(JSON.parse(entry.value));
+			} catch {
+				return Promise.resolve(entry.value);
+			}
+		}),
+		del: vi.fn().mockImplementation((key: string) => {
+			redisStore.delete(key);
+			return Promise.resolve(1);
+		}),
+	},
+}));
+
+// ---------------------------------------------------------------------------
 // Rate limiters — every limiter always succeeds (no Redis calls in tests)
 // To test a rate-limited response, override per-test:
 //   vi.mocked(signupLimiter.limit).mockResolvedValueOnce({ success: false, ... })
@@ -178,7 +219,7 @@ vi.mock("@/lib/server/resend/emails/passwordReset", () => ({
 }));
 
 vi.mock("@/lib/server/resend/emails/verificationCode", () => ({
-	sendEmailCode: vi.fn().mockResolvedValue(undefined),
+	sendVerificationCodeEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/server/resend/emails/repoInvite", () => ({
@@ -208,6 +249,7 @@ vi.mock("@/lib/server/resend/emails/invitationAccepted", () => ({
 // Clean state before every test so each test is fully independent
 beforeEach(async () => {
 	await clearDatabase();
+	redisStore.clear();
 });
 
 // Disconnect the Prisma client after all tests in the file are done
