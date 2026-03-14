@@ -9,6 +9,8 @@
  *   vi.mocked(getCurrentUser).mockResolvedValue(mockUser({ id: "specific-id" }))
  */
 
+import type { Provider } from "@/generated/prisma/enums";
+
 /** The shape returned by getCurrentUser() */
 export type MockCurrentUser = {
 	id: string;
@@ -17,7 +19,7 @@ export type MockCurrentUser = {
 	createdAt: Date;
 	updatedAt: Date;
 	hasPassword: boolean;
-	oauthProviders: string[];
+	oauthProviders: Provider[];
 };
 
 /** The full DB User row shape (returned by prisma.user.*) */
