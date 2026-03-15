@@ -13,8 +13,10 @@
     "db:seed": "node --env-file=.env ./src/db/seed.ts",
     "db:migrate:name": "npx prisma migrate dev --name",
     "db:migrate": "npx prisma migrate dev",
-    "test": "vitest",
-    "test:run": "vitest run",
+    "test": "vitest run",
+    "test:unit": "vitest run src/tests/unit",
+    "test:integration": "vitest run src/tests/api",
+    "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
