@@ -220,6 +220,7 @@ export function PRListItem({
 						{/* Edit / View PR button */}
 						<Link
 							href={href}
+							prefetch={false}
 							target={status === "sent" ? "_blank" : "_self"}
 							className="block text-blue-600 dark:text-blue-400 font-medium underline-offset-2 hover:underline"
 						>

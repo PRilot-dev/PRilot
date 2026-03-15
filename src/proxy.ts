@@ -1,5 +1,7 @@
 import { jwtVerify } from "jose";
 import { type NextRequest, NextResponse } from "next/server";
+import { refreshSession } from "@/lib/server/refreshSession";
+import { setTokensInCookies } from "@/lib/server/token";
 
 const PUBLIC_API_ROUTES = [
   "/api/auth/signup",
@@ -51,6 +53,23 @@ function unauthorizedResponse(): NextResponse {
   return response;
 }
 
+/**
+ * Attempts to refresh the session using the refresh token cookie.
+ * Returns the new tokens on success, or null on failure.
+ */
+async function tryRefresh(
+  req: NextRequest,
+): Promise<{ accessToken: string; refreshToken: string } | null> {
+  const refreshToken = req.cookies.get("refreshToken")?.value;
+  if (!refreshToken) return null;
+
+  try {
+    return await refreshSession(refreshToken);
+  } catch {
+    return null;
+  }
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const response = NextResponse.next();
@@ -62,6 +81,12 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith("/api/") && !PUBLIC_API_ROUTES.includes(pathname)) {
     const accessToken = req.cookies.get("accessToken")?.value;
     if (!accessToken || !(await isValidJWT(accessToken))) {
+      // Try server-side refresh before rejecting
+      const tokens = await tryRefresh(req);
+      if (tokens) {
+        setTokensInCookies(response, tokens.accessToken, tokens.refreshToken);
+        return response;
+      }
       return unauthorizedResponse();
     }
   }
@@ -70,6 +95,12 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith("/dashboard")) {
     const accessToken = req.cookies.get("accessToken")?.value;
     if (!accessToken || !(await isValidJWT(accessToken))) {
+      // Try server-side refresh before redirecting
+      const tokens = await tryRefresh(req);
+      if (tokens) {
+        setTokensInCookies(response, tokens.accessToken, tokens.refreshToken);
+        return response;
+      }
       const loginUrl = new URL("/login", req.url);
       const redirectResponse = NextResponse.redirect(loginUrl);
       addSecurityHeaders(redirectResponse.headers);

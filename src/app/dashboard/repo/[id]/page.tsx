@@ -158,7 +158,7 @@ export default function RepositoryPage() {
 							</Button>
 						</Link>
 						{repo.isAccessible ? (
-							<Link href={`/dashboard/repo/${id}/pr/new`} prefetch={false} className="w-full">
+							<Link href={`/dashboard/repo/${id}/pr/new`} className="w-full">
 								<Button className="w-full md:w-30 bg-gray-900 text-white shadow-md dark:bg-gray-200 dark:text-black hover:bg-gray-700 hover:dark:bg-gray-400 group">
 									<Plus className="w-4 h-4 mr-2 group-hover:rotate-90 duration-250" />
 									Generate PR

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useUser } from "@/contexts/UserContext";
@@ -8,6 +8,7 @@ import { useUser } from "@/contexts/UserContext";
 type AuthMode = "password" | "code";
 
 export function useAuth() {
+	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { user, setUser, loading: userLoading } = useUser();
 
@@ -24,9 +25,9 @@ export function useAuth() {
 	// Route guard — redirect to dashboard when user is authenticated
 	useEffect(() => {
 		if (!userLoading && user) {
-			window.location.href = "/dashboard";
+			router.replace("/dashboard");
 		}
-	}, [userLoading, user]);
+	}, [userLoading, user, router]);
 
 	// Send email code
 	const handleSendCode = async (e: React.FormEvent) => {
