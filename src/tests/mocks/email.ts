@@ -33,5 +33,5 @@ vi.mock("@/lib/server/resend/emails/InvitationDeclined", () => ({
 }));
 
 vi.mock("@/lib/server/resend/emails/invitationAccepted", () => ({
-	sendInvitationAcceptedEmail: vi.fn().mockResolvedValue(undefined),
+	sendMemberJoinedEmail: vi.fn().mockResolvedValue(undefined),
 }));

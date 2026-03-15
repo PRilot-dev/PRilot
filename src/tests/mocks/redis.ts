@@ -51,6 +51,9 @@ function passingLimiter() {
 		limit: vi
 			.fn()
 			.mockResolvedValue({ success: true, reset: Date.now() + 60_000, remaining: 9 }),
+		getRemaining: vi
+			.fn()
+			.mockResolvedValue({ remaining: 25, reset: Date.now() + 60_000, limit: 30 }),
 	};
 }
 
