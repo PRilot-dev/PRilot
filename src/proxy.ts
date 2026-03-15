@@ -84,29 +84,30 @@ export async function proxy(req: NextRequest) {
       // Try server-side refresh before rejecting
       const tokens = await tryRefresh(req);
       if (tokens) {
-        setTokensInCookies(response, tokens.accessToken, tokens.refreshToken);
-        return response;
+        // Forward new access token to the downstream API route handler
+        const requestHeaders = new Headers(req.headers);
+        requestHeaders.set(
+          "cookie",
+          `accessToken=${tokens.accessToken}; refreshToken=${tokens.refreshToken}`,
+        );
+        const forwardResponse = NextResponse.next({
+          request: { headers: requestHeaders },
+        });
+        addSecurityHeaders(forwardResponse.headers);
+        // Also set cookies on response so the browser gets the new tokens
+        setTokensInCookies(
+          forwardResponse,
+          tokens.accessToken,
+          tokens.refreshToken,
+        );
+        return forwardResponse;
       }
       return unauthorizedResponse();
     }
   }
 
-  // 3. Redirect unauthenticated users from dashboard to login
-  if (pathname.startsWith("/dashboard")) {
-    const accessToken = req.cookies.get("accessToken")?.value;
-    if (!accessToken || !(await isValidJWT(accessToken))) {
-      // Try server-side refresh before redirecting
-      const tokens = await tryRefresh(req);
-      if (tokens) {
-        setTokensInCookies(response, tokens.accessToken, tokens.refreshToken);
-        return response;
-      }
-      const loginUrl = new URL("/login", req.url);
-      const redirectResponse = NextResponse.redirect(loginUrl);
-      addSecurityHeaders(redirectResponse.headers);
-      return redirectResponse;
-    }
-  }
+  // 3. Dashboard auth is handled client-side by DashboardShell
+  // (no proxy redirect — avoids race condition with token rotation)
 
   return response;
 }
