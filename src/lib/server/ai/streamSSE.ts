@@ -69,7 +69,7 @@ export function createSSEResponse(
 	return new Response(stream, { headers: SSE_HEADERS });
 }
 
-export interface GroqStreamResult {
+export interface LLMStreamResult {
 	text: string;
 	usage?: {
 		promptTokens: number;
@@ -82,12 +82,12 @@ export interface GroqStreamResult {
  * Iterates a Groq streaming completion, sends each token as an SSE event,
  * and returns the accumulated text + usage stats from the final chunk.
  */
-export async function streamGroqTokens(
+export async function streamLLMTokens(
 	completion: AsyncIterable<unknown>,
 	send: SSESend,
-): Promise<GroqStreamResult> {
+): Promise<LLMStreamResult> {
 	let accumulated = "";
-	let usage: GroqStreamResult["usage"];
+	let usage: LLMStreamResult["usage"];
 
 	for await (const chunk of completion) {
 		const typed = chunk as {

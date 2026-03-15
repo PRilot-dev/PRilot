@@ -10,6 +10,7 @@
  */
 
 import type { Provider } from "@/generated/prisma/enums";
+import { testPrisma } from "@/tests/db";
 
 /** The shape returned by getCurrentUser() */
 export type MockCurrentUser = {
@@ -57,4 +58,11 @@ export function mockDbUser(overrides: Partial<MockDbUser> = {}): MockDbUser {
 		oauthIds: [],
 		...overrides,
 	};
+}
+
+/** Seed a real user in the test database. */
+export async function seedUser(email = "user@example.com", username = "testuser") {
+	return testPrisma.user.create({
+		data: { email, username, password: "hashed" },
+	});
 }

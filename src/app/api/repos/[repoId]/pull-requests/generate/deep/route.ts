@@ -6,7 +6,7 @@ import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
 import { groq } from "@/lib/server/ai/client";
 import { buildPRFromDiffs, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
-import { createSSEResponse, streamGroqTokens } from "@/lib/server/ai/streamSSE";
+import { createSSEResponse, streamLLMTokens } from "@/lib/server/ai/streamSSE";
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -135,7 +135,7 @@ export async function POST(
 					temperature: 0.4
 				});
 
-				return streamGroqTokens(completion, send);
+				return streamLLMTokens(completion, send);
 			}
 
 			// First attempt

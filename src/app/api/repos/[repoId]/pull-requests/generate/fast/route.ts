@@ -6,7 +6,7 @@ import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
 import { groq } from "@/lib/server/ai/client";
 import { buildPRFromCommits, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
-import { createSSEResponse, streamGroqTokens } from "@/lib/server/ai/streamSSE";
+import { createSSEResponse, streamLLMTokens } from "@/lib/server/ai/streamSSE";
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -121,7 +121,7 @@ export async function POST(
 				temperature: 0.4
 			});
 
-			const { text, usage } = await streamGroqTokens(completion, send);
+			const { text, usage } = await streamLLMTokens(completion, send);
 			console.log(
 				`[FAST] PR generation streamed (Groq): ${(performance.now() - t0).toFixed(0)}ms | tokens: ${usage?.promptTokens ?? "?"}in/${usage?.completionTokens ?? "?"}out/${usage?.totalTokens ?? "?"}total`,
 			);

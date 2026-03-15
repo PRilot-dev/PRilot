@@ -17,7 +17,7 @@ vi.mock("@/lib/server/resend/emails/verificationCode", () => ({
 }));
 
 vi.mock("@/lib/server/resend/emails/repoInvite", () => ({
-	sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+	sendRepoInviteEmail: vi.fn().mockResolvedValue({ error: null }),
 }));
 
 vi.mock("@/lib/server/resend/emails/memberLeft", () => ({
