@@ -11,9 +11,11 @@ export class UpstashCacheProvider implements ICacheProvider {
 	async set(
 		key: string,
 		value: unknown,
-		options?: { ttlSeconds?: number },
+		options?: { ttlSeconds?: number; keepTtl?: boolean },
 	): Promise<void> {
-		if (options?.ttlSeconds) {
+		if (options?.keepTtl) {
+			await this.redis.set(key, value, { keepTtl: true });
+		} else if (options?.ttlSeconds) {
 			await this.redis.set(key, value, { ex: options.ttlSeconds });
 		} else {
 			await this.redis.set(key, value);
