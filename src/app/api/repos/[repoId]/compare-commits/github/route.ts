@@ -8,10 +8,10 @@ import {
 	ForbiddenError,
 	NotFoundError,
 } from "@/lib/server/error";
-import { getCompareData } from "@/lib/server/github/compare";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import { handleError } from "@/lib/server/handleError";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { githubCompareCommitsLimiter } from "@/lib/server/redis/rate-limiters";
+import { githubCompareCommitsLimiter } from "@/lib/server/providers/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
@@ -70,7 +70,7 @@ export async function GET(
 		}
 
 		// 8. Fetch commits from GitHub
-		const { commits } = await getCompareData(
+		const { commits } = await gitApiProvider.compareBranches(
 			repo.installation.installationId,
 			repo.owner,
 			repo.name,

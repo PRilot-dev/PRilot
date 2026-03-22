@@ -9,12 +9,12 @@ import {
 	NotFoundError,
 	UnauthorizedError,
 } from "@/lib/server/error";
-import { getCompareData } from "@/lib/server/github/compare";
 import { handleError } from "@/lib/server/handleError";
-import { redis } from "@/lib/server/redis/client";
+import { cacheProvider } from "@/lib/server/providers/cache";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { githubCompareCommitsLimiter } from "@/lib/server/redis/rate-limiters";
+import { githubCompareCommitsLimiter } from "@/lib/server/providers/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
@@ -72,7 +72,7 @@ export async function POST(
 		rateLimitOrThrow(ghLimit);
 
 		// 7. Fetch compare data from GitHub (files + commits in one call)
-		const { files, commits } = await getCompareData(
+		const { files, commits } = await gitApiProvider.compareBranches(
 			repo.installation.installationId,
 			repo.owner,
 			repo.name,
@@ -80,12 +80,12 @@ export async function POST(
 			safeCompare,
 		);
 
-		// 8. Cache in Redis if within size limit
+		// 8. Cache if within size limit
 		if ((files && files.length > 0) || commits.length > 0) {
 			const serialized = JSON.stringify({ files, commits });
 			if (serialized.length <= MAX_CACHE_SIZE_BYTES) {
 				const cacheKey = buildCompareCacheKey(repoId, safeBase, safeCompare);
-				await redis.set(cacheKey, serialized, { ex: CACHE_TTL_SECONDS });
+				await cacheProvider.set(cacheKey, serialized, { ttlSeconds: CACHE_TTL_SECONDS });
 			}
 		}
 

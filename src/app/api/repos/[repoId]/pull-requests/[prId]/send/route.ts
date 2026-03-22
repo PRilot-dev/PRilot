@@ -7,18 +7,13 @@ import {
 	GitHubApiError,
 	NotFoundError,
 } from "@/lib/server/error";
-import { githubFetch } from "@/lib/server/github/client";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import { handleError } from "@/lib/server/handleError";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
 
-interface GitHubCreatePRResponse {
-	html_url: string;
-	state: string;
-}
-
-// Note: This route isn't rate-limited since to send PRs 
+// Note: This route isn't rate-limited since to send PRs
 // user needs to generate them first, which is already rate-limited
 export async function POST(
 	_req: NextRequest,
@@ -78,19 +73,17 @@ export async function POST(
 		}
 
 		// 6. Post PR to GitHub
-		let ghPr: { data: GitHubCreatePRResponse };
+		let ghPr: { url: string; number: number; state: string };
 		try {
-			ghPr = await githubFetch<GitHubCreatePRResponse>(
+			ghPr = await gitApiProvider.createPullRequest(
 				repo.installation.installationId,
-				`/repos/${repo.owner}/${repo.name}/pulls`,
+				repo.owner,
+				repo.name,
 				{
-					method: "POST",
-					body: {
-						title: prDraft.title,
-						body: prDraft.description,
-						base: prDraft.baseBranch,
-						head: prDraft.compareBranch,
-					},
+					title: prDraft.title,
+					body: prDraft.description,
+					baseBranch: prDraft.baseBranch,
+					headBranch: prDraft.compareBranch,
 				},
 			);
 		} catch (err) {
@@ -114,13 +107,13 @@ export async function POST(
 			where: { id: prId },
 			data: {
 				status: "sent",
-				providerPrUrl: ghPr.data.html_url,
+				providerPrUrl: ghPr.url,
 			},
 		});
 
 		// 8. Return GitHub PR url
 		return NextResponse.json({
-			url: ghPr.data.html_url,
+			url: ghPr.url,
 		});
 	} catch (error) {
 		return handleError(error);

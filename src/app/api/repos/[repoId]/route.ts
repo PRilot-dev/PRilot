@@ -8,11 +8,10 @@ import {
 	NotFoundError,
 	UnauthorizedError,
 } from "@/lib/server/error";
-import { githubFetch } from "@/lib/server/github/client";
-import type { IGitHubBranch } from "@/lib/server/github/types";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import { handleError } from "@/lib/server/handleError";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { githubRepoLimiter } from "@/lib/server/redis/rate-limiters";
+import { githubRepoLimiter } from "@/lib/server/providers/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
@@ -55,20 +54,19 @@ export async function GET(
 
 		if (isAccessible) {
 			try {
-				const brancheList = await githubFetch<IGitHubBranch[]>(
+				const branches = await gitApiProvider.listBranches(
 					repo.installation.installationId,
-					`/repos/${repo.owner}/${repo.name}/branches`,
+					repo.owner,
+					repo.name,
 				);
-				brancheNames = brancheList.data.map((b) => b.name);
+				brancheNames = branches.map((b) => b.name);
 
-				const { linkHeader } = await githubFetch<string[]>(
+				commitsCount = await gitApiProvider.getCommitCount(
 					repo.installation.installationId,
-					`/repos/${repo.owner}/${repo.name}/commits?sha=${repo.defaultBranch}&per_page=1&page=1`,
-					{ returnLinkHeader: true },
+					repo.owner,
+					repo.name,
+					repo.defaultBranch,
 				);
-				commitsCount = linkHeader
-					? parseInt(linkHeader.match(/&page=(\d+)>; rel="last"/)?.[1] ?? "1", 10)
-					: 1;
 			} catch (err) {
 				if (err instanceof GitHubApiError || err instanceof BadRequestError) {
 					isAccessible = false;

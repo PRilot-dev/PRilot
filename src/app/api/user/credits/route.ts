@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { UnauthorizedError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { aiLimiterPerMonth } from "@/lib/server/redis/rate-limiters";
+import { aiLimiterPerMonth } from "@/lib/server/providers/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 
 const MONTHLY_LIMIT = 30;
