@@ -8,7 +8,7 @@ import { BadRequestError, UnauthorizedError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
 import { hashPassword, verifyPassword } from "@/lib/server/password";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { changePasswordLimiter } from "@/lib/server/redis/rate-limiters";
+import { changePasswordLimiter } from "@/lib/server/providers/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
