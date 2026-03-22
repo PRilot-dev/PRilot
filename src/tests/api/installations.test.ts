@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/installations/github/route";
 import { GET } from "@/app/api/installations/route";
-import { verifyInstallation } from "@/lib/server/github/app";
-import { githubFetch } from "@/lib/server/github/client";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
+import { gitAppProvider } from "@/lib/server/providers/git-app";
 import { getCurrentUser } from "@/lib/server/session";
 import { testPrisma } from "@/tests/db";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
@@ -91,23 +91,25 @@ describe("POST /api/installations/github", () => {
 		// ARRANGE
 		const user = await seedUser();
 		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
-		vi.mocked(verifyInstallation).mockResolvedValueOnce({
+		vi.mocked(gitAppProvider.verifyInstallation).mockResolvedValueOnce({
 			id: 12345,
-			account: { login: "my-org", type: "User" },
-		} as never);
-		vi.mocked(githubFetch).mockResolvedValueOnce({
-			data: {
-				repositories: [
-					{
-						id: 999,
-						name: "cool-repo",
-						private: false,
-						default_branch: "main",
-						owner: { login: "my-org" },
-					},
-				],
-			},
-		} as never);
+			account: { login: "my-org", id: 1, type: "User" },
+			repositorySelection: "all",
+			permissions: {},
+		});
+		vi.mocked(gitApiProvider.listRepositories).mockResolvedValueOnce({
+			totalCount: 1,
+			repositories: [
+				{
+					id: 999,
+					name: "cool-repo",
+					fullName: "my-org/cool-repo",
+					isPrivate: false,
+					defaultBranch: "main",
+					owner: { login: "my-org", id: 1, type: "User" },
+				},
+			],
+		});
 		const req = buildRequest("POST", "/api/installations/github", {
 			body: { installationId: "inst-new" },
 		});
@@ -141,10 +143,12 @@ describe("POST /api/installations/github", () => {
 				createdById: other.id,
 			},
 		});
-		vi.mocked(verifyInstallation).mockResolvedValueOnce({
+		vi.mocked(gitAppProvider.verifyInstallation).mockResolvedValueOnce({
 			id: 12345,
-			account: { login: "other-org", type: "User" },
-		} as never);
+			account: { login: "other-org", id: 2, type: "User" },
+			repositorySelection: "all",
+			permissions: {},
+		});
 		const req = buildRequest("POST", "/api/installations/github", {
 			body: { installationId: "inst-taken" },
 		});

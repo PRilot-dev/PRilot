@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { POST } from "@/app/api/auth/forgot-password/route";
-import { sendPasswordResetEmail } from "@/lib/server/resend/emails/passwordReset";
+import { emailProvider } from "@/lib/server/providers/email";
 import { testPrisma } from "@/tests/db";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 
@@ -31,7 +31,7 @@ describe("POST /api/auth/forgot-password", () => {
 			where: { userId: user.id },
 		});
 		expect(token).not.toBeNull();
-		expect(sendPasswordResetEmail).toHaveBeenCalledOnce();
+		expect(emailProvider.sendPasswordReset).toHaveBeenCalledOnce();
 	});
 
 	it("returns 200 with the same message when user does not exist", async () => {
@@ -47,7 +47,7 @@ describe("POST /api/auth/forgot-password", () => {
 		// ASSERT
 		expect(res.status).toBe(200);
 		expect(data).toMatchObject({ message: SUCCESS_MESSAGE });
-		expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+		expect(emailProvider.sendPasswordReset).not.toHaveBeenCalled();
 	});
 
 	it("deletes existing reset tokens before creating a new one", async () => {

@@ -1,14 +1,10 @@
 import { vi } from "vitest";
 import type { IPRResponse } from "@/types/pullRequests";
 
-// AI client — no real Groq calls in tests
-vi.mock("@/lib/server/ai/client", () => ({
-	groq: {
-		chat: {
-			completions: {
-				create: vi.fn(),
-			},
-		},
+// AI provider — all routes import from here
+vi.mock("@/lib/server/providers/ai", () => ({
+	aiProvider: {
+		createStreamingCompletion: vi.fn(),
 	},
 }));
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/repos/[repoId]/pull-requests/[prId]/send/route";
 import { GitHubApiError } from "@/lib/server/error";
-import { githubFetch } from "@/lib/server/github/client";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import { getCurrentUser } from "@/lib/server/session";
 import { testPrisma } from "@/tests/db";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
@@ -19,9 +19,11 @@ describe("POST /api/repos/[repoId]/pull-requests/[prId]/send", () => {
 		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
-		vi.mocked(githubFetch).mockResolvedValueOnce({
-			data: { html_url: "https://github.com/test-org/test-repo/pull/1", state: "open" },
-		} as never);
+		vi.mocked(gitApiProvider.createPullRequest).mockResolvedValueOnce({
+			url: "https://github.com/test-org/test-repo/pull/1",
+			number: 1,
+			state: "open",
+		});
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/${pr.id}/send`);
 		const ctx = prParams(repository.id, pr.id);
 
@@ -66,7 +68,7 @@ describe("POST /api/repos/[repoId]/pull-requests/[prId]/send", () => {
 		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
-		vi.mocked(githubFetch).mockRejectedValueOnce(
+		vi.mocked(gitApiProvider.createPullRequest).mockRejectedValueOnce(
 			new GitHubApiError(403, "Forbidden"),
 		);
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/${pr.id}/send`);

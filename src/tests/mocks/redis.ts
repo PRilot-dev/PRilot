@@ -57,7 +57,7 @@ function passingLimiter() {
 	};
 }
 
-vi.mock("@/lib/server/redis/rate-limiters", () => ({
+vi.mock("@/lib/server/providers/rate-limiters", () => ({
 	loginLimiter: passingLimiter(),
 	signupLimiter: passingLimiter(),
 	githubOAuthStartLimiter: passingLimiter(),
@@ -73,4 +73,42 @@ vi.mock("@/lib/server/redis/rate-limiters", () => ({
 	githubInstallLimiter: passingLimiter(),
 	githubCompareCommitsLimiter: passingLimiter(),
 	inviteEmailLimiter: passingLimiter(),
+}));
+
+// ---------------------------------------------------------------------------
+// Cache provider — re-uses the same in-memory redisStore
+// ---------------------------------------------------------------------------
+vi.mock("@/lib/server/providers/cache", () => ({
+	cacheProvider: {
+		get: vi.fn().mockImplementation((key: string) => {
+			const entry = redisStore.get(key);
+			if (!entry) return Promise.resolve(null);
+			if (entry.expireAt && entry.expireAt < Date.now()) {
+				redisStore.delete(key);
+				return Promise.resolve(null);
+			}
+			try {
+				return Promise.resolve(JSON.parse(entry.value));
+			} catch {
+				return Promise.resolve(entry.value);
+			}
+		}),
+		set: vi.fn().mockImplementation(
+			(key: string, value: unknown, opts?: { ttlSeconds?: number; keepTtl?: boolean }) => {
+				const existing = redisStore.get(key);
+				const expireAt =
+					opts?.keepTtl && existing?.expireAt
+						? existing.expireAt
+						: opts?.ttlSeconds
+							? Date.now() + opts.ttlSeconds * 1000
+							: undefined;
+				redisStore.set(key, { value: typeof value === "string" ? value : JSON.stringify(value), expireAt });
+				return Promise.resolve();
+			},
+		),
+		del: vi.fn().mockImplementation((key: string) => {
+			redisStore.delete(key);
+			return Promise.resolve();
+		}),
+	},
 }));

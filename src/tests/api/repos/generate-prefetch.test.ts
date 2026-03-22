@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/repos/[repoId]/pull-requests/generate/prefetch/route";
-import { getCompareData } from "@/lib/server/github/compare";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import { getCurrentUser } from "@/lib/server/session";
 import { seedRepo, validBranchBody } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
@@ -12,10 +12,10 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/prefetch", () => {
 		const user = await seedUser();
 		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
-		vi.mocked(getCompareData).mockResolvedValueOnce({
+		vi.mocked(gitApiProvider.compareBranches).mockResolvedValueOnce({
 			commits: ["feat: something"],
-			files: [{ filename: "index.ts", status: "modified", changes: 5, patch: "diff" }],
-		} as never);
+			files: [{ filename: "index.ts", status: "modified", additions: 3, deletions: 2, changes: 5, patch: "diff" }],
+		});
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/generate/prefetch`, {
 			body: validBranchBody(),
 		});
