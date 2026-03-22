@@ -175,7 +175,9 @@ export class GitHubApiProvider implements IGitProviderApi {
 		};
 	}
 
-	// ─── Internal helpers ────────────────────────────────────
+	// ==================================
+	// ======== Internal helpers ========
+	// ==================================
 
 	private async fetch<T>(
 		installationId: string,
