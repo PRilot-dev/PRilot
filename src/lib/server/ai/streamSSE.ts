@@ -1,3 +1,5 @@
+import type { ChatStreamChunk } from "@/lib/server/interfaces";
+
 export class SSEUserError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -79,40 +81,24 @@ export interface LLMStreamResult {
 }
 
 /**
- * Iterates a Groq streaming completion, sends each token as an SSE event,
+ * Iterates a streaming completion, sends each token as an SSE event,
  * and returns the accumulated text + usage stats from the final chunk.
  */
 export async function streamLLMTokens(
-	completion: AsyncIterable<unknown>,
+	completion: AsyncIterable<ChatStreamChunk>,
 	send: SSESend,
 ): Promise<LLMStreamResult> {
 	let accumulated = "";
 	let usage: LLMStreamResult["usage"];
 
 	for await (const chunk of completion) {
-		const typed = chunk as {
-			choices?: { delta?: { content?: string | null } }[];
-			x_groq?: {
-				usage?: {
-					prompt_tokens?: number;
-					completion_tokens?: number;
-					total_tokens?: number;
-				};
-			};
-		};
-
-		const delta = typed.choices?.[0]?.delta?.content;
-		if (delta) {
-			accumulated += delta;
-			send("token", { token: delta });
+		if (chunk.delta) {
+			accumulated += chunk.delta;
+			send("token", { token: chunk.delta });
 		}
 
-		if (typed.x_groq?.usage?.total_tokens) {
-			usage = {
-				promptTokens: typed.x_groq.usage.prompt_tokens ?? 0,
-				completionTokens: typed.x_groq.usage.completion_tokens ?? 0,
-				totalTokens: typed.x_groq.usage.total_tokens,
-			};
+		if (chunk.usage) {
+			usage = chunk.usage;
 		}
 	}
 
