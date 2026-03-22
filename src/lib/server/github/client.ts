@@ -1,5 +1,5 @@
+import { gitAppProvider } from "@/lib/server/providers/git-app";
 import { GitHubApiError } from "../error";
-import { createInstallationAccessToken } from "./installation";
 
 interface GitHubFetchOptions {
 	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -13,7 +13,7 @@ export async function githubFetch<T = unknown>(
 	path: string,
 	options?: GitHubFetchOptions,
 ): Promise<{ data: T; linkHeader?: string | null }> {
-	const { token } = await createInstallationAccessToken(installationId);
+	const { token } = await gitAppProvider.createInstallationAccessToken(installationId);
 	const res = await fetch(`https://api.github.com${path}`, {
 		method: options?.method ?? "GET",
 		headers: {
