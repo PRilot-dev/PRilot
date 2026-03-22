@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { POST } from "@/app/api/auth/email-code/send/route";
-import { sendVerificationCodeEmail } from "@/lib/server/resend/emails/verificationCode";
+import { emailProvider } from "@/lib/server/providers/email";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 import { redisStore } from "@/tests/setup";
 
@@ -40,8 +40,8 @@ describe("POST /api/auth/email-code/send", () => {
 		await POST(req);
 
 		// ASSERT
-		expect(sendVerificationCodeEmail).toHaveBeenCalledOnce();
-		expect(sendVerificationCodeEmail).toHaveBeenCalledWith(
+		expect(emailProvider.sendVerificationCode).toHaveBeenCalledOnce();
+		expect(emailProvider.sendVerificationCode).toHaveBeenCalledWith(
 			expect.objectContaining({ to: email, code: expect.stringMatching(/^\d{6}$/) }),
 		);
 	});

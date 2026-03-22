@@ -4,7 +4,7 @@ import { getPrisma } from "@/db";
 import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
-import { groq } from "@/lib/server/ai/client";
+import { aiProvider } from "@/lib/server/providers/ai";
 import { buildPRFromCommits, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
 import { createSSEResponse, streamLLMTokens } from "@/lib/server/ai/streamSSE";
 import {
@@ -16,7 +16,7 @@ import {
 import { handleError } from "@/lib/server/handleError";
 import { checkMonthlyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { aiLimiterPerMinute, aiLimiterPerMonth } from "@/lib/server/redis/rate-limiters";
+import { aiLimiterPerMinute, aiLimiterPerMonth } from "@/lib/server/providers/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 import type { IPRResponse } from "@/types/pullRequests";
 
@@ -102,7 +102,7 @@ export async function POST(
 		// 10. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
 			const t0 = performance.now();
-			const completion = await groq.chat.completions.create({
+			const completion = await aiProvider.createStreamingCompletion({
 				model: "openai/gpt-oss-120b",
 				messages: [
 					{
@@ -116,9 +116,8 @@ export async function POST(
 							.join("\n"),
 					},
 				],
-				response_format: { type: "json_object" },
-				stream: true,
-				temperature: 0.4
+				responseFormat: { type: "json_object" },
+				temperature: 0.4,
 			});
 
 			const { text, usage } = await streamLLMTokens(completion, send);

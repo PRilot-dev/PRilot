@@ -12,8 +12,8 @@ import {
 } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { inviteEmailLimiter } from "@/lib/server/redis/rate-limiters";
-import { sendRepoInviteEmail } from "@/lib/server/resend/emails/repoInvite";
+import { inviteEmailLimiter } from "@/lib/server/providers/rate-limiters";
+import { emailProvider } from "@/lib/server/providers/email";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
@@ -138,7 +138,7 @@ export async function POST(
 		const inviteUrl = `${config.frontendUrl}/invitations/${token}/accept`;
 		const declineUrl = `${config.frontendUrl}/invitations/${token}/decline`;
 
-		const result = await sendRepoInviteEmail({
+		const result = await emailProvider.sendRepoInvite({
 			to: email,
 			repoName: repo.name,
 			owner: user.username,

@@ -8,8 +8,7 @@ import {
 	UnauthorizedError,
 } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { sendMemberLeftEmail } from "@/lib/server/resend/emails/memberLeft";
-import { sendMemberRemovedEmail } from "@/lib/server/resend/emails/memberRemoved";
+import { emailProvider } from "@/lib/server/providers/email";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
@@ -178,14 +177,14 @@ export async function DELETE(
 		const owner = repo.installation?.createdBy;
 		await Promise.allSettled([
 			targetUser === currentUser.id && owner
-				? sendMemberLeftEmail({
+				? emailProvider.sendMemberLeft({
 						to: owner.email,
 						repoName: repo.name,
 						username: member.user.username,
 					})
 				: null,
 			targetUser !== currentUser.id && member.user.email
-				? sendMemberRemovedEmail({
+				? emailProvider.sendMemberRemoved({
 						to: member.user.email,
 						repoName: repo.name,
 						removedBy: currentUser.username,

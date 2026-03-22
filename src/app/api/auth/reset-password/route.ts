@@ -6,7 +6,7 @@ import { handleError } from "@/lib/server/handleError";
 import { getClientIp } from "@/lib/server/ip";
 import { hashPassword } from "@/lib/server/password";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { resetPasswordLimiter } from "@/lib/server/redis/rate-limiters";
+import { resetPasswordLimiter } from "@/lib/server/providers/rate-limiters";
 
 const prisma = getPrisma();
 

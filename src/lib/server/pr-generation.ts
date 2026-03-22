@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getCompareData } from "@/lib/server/github/compare";
-import { redis } from "@/lib/server/redis/client";
-import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
-import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
+import type { ICacheProvider, IGitProviderApi, IRateLimiter } from "@/lib/server/interfaces";
+import { cacheProvider } from "@/lib/server/providers/cache";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import {
 	aiLimiterPerMonth,
 	githubCompareCommitsLimiter,
-} from "@/lib/server/redis/rate-limiters";
+} from "@/lib/server/providers/rate-limiters";
+import { buildCompareCacheKey } from "@/lib/server/redis/compareCacheKey";
+import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import { formatDateTimeForErrors } from "@/lib/utils/formatDateTime";
 import type { IGitHubFile } from "@/types/commits";
 
@@ -30,6 +31,15 @@ export interface CompareResult {
 
 export async function fetchCachedCompareData(
 	params: CompareDataParams,
+	deps: {
+		cache: ICacheProvider;
+		compareCommitsLimiter: IRateLimiter;
+		gitApi: IGitProviderApi;
+	} = {
+		cache: cacheProvider,
+		compareCommitsLimiter: githubCompareCommitsLimiter,
+		gitApi: gitApiProvider,
+	},
 ): Promise<CompareResult> {
 	const cacheKey = buildCompareCacheKey(
 		params.repoId,
@@ -38,7 +48,7 @@ export async function fetchCachedCompareData(
 	);
 
 	try {
-		const cached = await redis.get<string>(cacheKey);
+		const cached = await deps.cache.get<string>(cacheKey);
 		if (cached) {
 			const data = JSON.parse(
 				typeof cached === "string" ? cached : JSON.stringify(cached),
@@ -53,12 +63,12 @@ export async function fetchCachedCompareData(
 		// Cache read failed — fall through to GitHub
 	}
 
-	const ghLimit = await githubCompareCommitsLimiter.limit(
+	const ghLimit = await deps.compareCommitsLimiter.limit(
 		`github:compare:user:${params.userId}`,
 	);
 	rateLimitOrThrow(ghLimit);
 
-	const compareData = await getCompareData(
+	const compareData = await deps.gitApi.compareBranches(
 		params.installationId,
 		params.repoOwner,
 		params.repoName,
@@ -67,7 +77,7 @@ export async function fetchCachedCompareData(
 	);
 
 	return {
-		files: compareData.files,
+		files: compareData.files as IGitHubFile[] | undefined,
 		commits: compareData.commits,
 		cacheHit: false,
 	};
@@ -78,13 +88,14 @@ export async function fetchCachedCompareData(
 export async function checkMonthlyLimit(
 	members: { userId: string; role: string }[],
 	userId: string,
+	monthLimiter: IRateLimiter = aiLimiterPerMonth,
 ): Promise<NextResponse | { monthlyLimitKey: string; isOwner: boolean }> {
 	const owner = members.find((m) => m.role === "owner");
 	if (!owner) throw new Error("No owner found for repository");
 
 	const isOwner = userId === owner.userId;
 	const monthlyLimitKey = `ai:month:user:${owner.userId}`;
-	const monthlyCheck = await aiLimiterPerMonth.getRemaining(monthlyLimitKey);
+	const monthlyCheck = await monthLimiter.getRemaining(monthlyLimitKey);
 
 	if (monthlyCheck.remaining <= 0) {
 		if (isOwner) {

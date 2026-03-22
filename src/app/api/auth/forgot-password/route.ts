@@ -6,8 +6,8 @@ import { config } from "@/lib/server/config";
 import { handleError } from "@/lib/server/handleError";
 import { getClientIp } from "@/lib/server/ip";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { forgotPasswordLimiter } from "@/lib/server/redis/rate-limiters";
-import { sendPasswordResetEmail } from "@/lib/server/resend/emails/passwordReset";
+import { forgotPasswordLimiter } from "@/lib/server/providers/rate-limiters";
+import { emailProvider } from "@/lib/server/providers/email";
 
 const prisma = getPrisma();
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 
 		// 6. Send email
 		const resetUrl = `${config.frontendUrl}/reset-password?token=${token}`;
-		await sendPasswordResetEmail({ to: email, resetUrl });
+		await emailProvider.sendPasswordReset({ to: email, resetUrl });
 
 		return NextResponse.json({ message: SUCCESS_MESSAGE });
 	} catch (error) {

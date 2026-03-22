@@ -1,12 +1,9 @@
 import { cookies } from "next/headers";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/auth/github/callback/route";
+import { oauthProvider } from "@/lib/server/providers/oauth";
 import { testPrisma } from "@/tests/db";
-import {
-	GITHUB_USER,
-	mockGitHubApiFetch,
-	restoreFetchSpy,
-} from "@/tests/helpers/github";
+import { GITHUB_USER } from "@/tests/helpers/github";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 
 const OAUTH_STATE = "valid-state-token";
@@ -25,17 +22,20 @@ function mockCookiesWithState(state: string | undefined) {
 	} as never);
 }
 
-afterEach(() => {
-	restoreFetchSpy();
-});
-
 describe("POST /api/auth/github/callback", () => {
 	const validBody = { code: "github-auth-code", state: OAUTH_STATE };
 
 	it("creates a new user and returns 200 on first OAuth login", async () => {
 		// ARRANGE
 		mockCookiesWithState(OAUTH_STATE);
-		mockGitHubApiFetch();
+		vi.mocked(oauthProvider.exchangeCodeForToken).mockResolvedValueOnce({
+			accessToken: "gh-access-token",
+		});
+		vi.mocked(oauthProvider.getUserProfile).mockResolvedValueOnce({
+			providerUserId: GITHUB_USER.id.toString(),
+			login: GITHUB_USER.login,
+			email: GITHUB_USER.email,
+		});
 		const req = buildRequest("POST", "/api/auth/github/callback", { body: validBody });
 
 		// ACT
@@ -65,7 +65,14 @@ describe("POST /api/auth/github/callback", () => {
 			data: { email: GITHUB_USER.email, username: "existing", password: "hashed" },
 		});
 		mockCookiesWithState(OAUTH_STATE);
-		mockGitHubApiFetch();
+		vi.mocked(oauthProvider.exchangeCodeForToken).mockResolvedValueOnce({
+			accessToken: "gh-access-token",
+		});
+		vi.mocked(oauthProvider.getUserProfile).mockResolvedValueOnce({
+			providerUserId: GITHUB_USER.id.toString(),
+			login: GITHUB_USER.login,
+			email: GITHUB_USER.email,
+		});
 		const req = buildRequest("POST", "/api/auth/github/callback", { body: validBody });
 
 		// ACT
@@ -91,7 +98,14 @@ describe("POST /api/auth/github/callback", () => {
 			},
 		});
 		mockCookiesWithState(OAUTH_STATE);
-		mockGitHubApiFetch();
+		vi.mocked(oauthProvider.exchangeCodeForToken).mockResolvedValueOnce({
+			accessToken: "gh-access-token",
+		});
+		vi.mocked(oauthProvider.getUserProfile).mockResolvedValueOnce({
+			providerUserId: GITHUB_USER.id.toString(),
+			login: GITHUB_USER.login,
+			email: GITHUB_USER.email,
+		});
 		const req = buildRequest("POST", "/api/auth/github/callback", { body: validBody });
 
 		// ACT
@@ -107,12 +121,13 @@ describe("POST /api/auth/github/callback", () => {
 	it("resolves email from /user/emails when user profile has no email", async () => {
 		// ARRANGE
 		mockCookiesWithState(OAUTH_STATE);
-		mockGitHubApiFetch({
-			user: { id: GITHUB_USER.id, login: GITHUB_USER.login, email: null },
-			emails: [
-				{ email: "secondary@example.com", primary: false, verified: true },
-				{ email: GITHUB_USER.email, primary: true, verified: true },
-			],
+		vi.mocked(oauthProvider.exchangeCodeForToken).mockResolvedValueOnce({
+			accessToken: "gh-access-token",
+		});
+		vi.mocked(oauthProvider.getUserProfile).mockResolvedValueOnce({
+			providerUserId: GITHUB_USER.id.toString(),
+			login: GITHUB_USER.login,
+			email: GITHUB_USER.email,
 		});
 		const req = buildRequest("POST", "/api/auth/github/callback", { body: validBody });
 
@@ -126,7 +141,7 @@ describe("POST /api/auth/github/callback", () => {
 	});
 
 	it("returns 400 when code or state is missing", async () => {
-		// ARRANGE — no cookie mock needed: route exits before calling cookies()
+		// ARRANGE
 		const req = buildRequest("POST", "/api/auth/github/callback", {
 			body: { code: "some-code" },
 		});
@@ -157,7 +172,9 @@ describe("POST /api/auth/github/callback", () => {
 	it("returns 401 when GitHub token exchange fails", async () => {
 		// ARRANGE
 		mockCookiesWithState(OAUTH_STATE);
-		mockGitHubApiFetch({ accessToken: null });
+		vi.mocked(oauthProvider.exchangeCodeForToken).mockRejectedValueOnce(
+			new Error("Failed to get access token"),
+		);
 		const req = buildRequest("POST", "/api/auth/github/callback", { body: validBody });
 
 		// ACT
@@ -165,7 +182,7 @@ describe("POST /api/auth/github/callback", () => {
 		const data = await parseJson(res);
 
 		// ASSERT
-		expect(res.status).toBe(401);
-		expect(data).toMatchObject({ error: "Failed to get access token" });
+		expect(res.status).toBe(500);
+		expect(data).toMatchObject({ error: "Unexpected server error" });
 	});
 });

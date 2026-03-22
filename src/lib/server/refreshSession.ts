@@ -1,8 +1,9 @@
 import "server-only";
 
 import { getPrisma } from "@/db";
+import { UnauthorizedError } from "@/lib/server/error";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { refreshLimiter } from "@/lib/server/redis/rate-limiters";
+import { refreshLimiter } from "@/lib/server/providers/rate-limiters";
 import { generateAccessToken, generateRefreshToken } from "@/lib/server/token";
 
 const prisma = getPrisma();
@@ -25,11 +26,11 @@ export async function refreshSession(
   });
 
   if (!stored) {
-    throw new Error("Refresh token not found");
+    throw new UnauthorizedError("Refresh token expired");
   }
 
   if (stored.expiresAt < new Date()) {
-    throw new Error("Refresh token expired");
+    throw new UnauthorizedError("Refresh token expired");
   }
 
   // 2. Rate limit per user

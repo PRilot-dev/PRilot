@@ -5,9 +5,9 @@ import { getPrisma } from "@/db";
 import { BadRequestError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
 import { getClientIp } from "@/lib/server/ip";
-import { redis } from "@/lib/server/redis/client";
+import { cacheProvider } from "@/lib/server/providers/cache";
+import { emailCodeVerifyLimiter } from "@/lib/server/providers/rate-limiters";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { emailCodeVerifyLimiter } from "@/lib/server/redis/rate-limiters";
 import { createSession } from "@/lib/server/token";
 
 const prisma = getPrisma();
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
 		// 3. Get stored code from Redis
 		const redisKey = `auth:email-code:${email}`;
-		const stored = await redis.get<{ hash: string; attempts: number }>(
+		const stored = await cacheProvider.get<{ hash: string; attempts: number }>(
 			redisKey,
 		);
 
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 		}
 
 		// 4. Increment attempts before comparing (prevents brute force)
-		await redis.set(
+		await cacheProvider.set(
 			redisKey,
 			JSON.stringify({ ...stored, attempts: stored.attempts + 1 }),
 			{ keepTtl: true },
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 		}
 
 		// 6. Code is valid — delete it from Redis
-		await redis.del(redisKey);
+		await cacheProvider.del(redisKey);
 
 		// 7. Find or create user
 		let user = await prisma.user.findUnique({

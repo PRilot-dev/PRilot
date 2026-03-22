@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/repos/[repoId]/compare-commits/github/route";
-import { getCompareData } from "@/lib/server/github/compare";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import { getCurrentUser } from "@/lib/server/session";
 import { seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
@@ -19,14 +19,14 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 		const user = await seedUser();
 		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
-		const mockCommits = [{ sha: "abc123", message: "feat: something" }];
-		vi.mocked(getCompareData).mockResolvedValueOnce({ commits: mockCommits } as never);
+		const mockCommits = ["feat: something"];
+		vi.mocked(gitApiProvider.compareBranches).mockResolvedValueOnce({ commits: mockCommits, files: [] });
 		const req = buildCompareRequest(repository.id);
 		const ctx = buildParams({ repoId: repository.id });
 
 		// ACT
 		const res = await GET(req, ctx);
-		const data = await parseJson<{ commits: { sha: string }[] }>(res);
+		const data = await parseJson<{ commits: string[] }>(res);
 
 		// ASSERT
 		expect(res.status).toBe(200);

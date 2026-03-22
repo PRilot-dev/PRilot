@@ -5,15 +5,11 @@ import {
 	ConflictError,
 	UnauthorizedError,
 } from "@/lib/server/error";
-import { verifyInstallation } from "@/lib/server/github/app";
-import { githubFetch } from "@/lib/server/github/client";
-import type {
-	IGitHubRepo,
-	IGitHubReposResponse,
-} from "@/lib/server/github/types";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
+import { gitAppProvider } from "@/lib/server/providers/git-app";
 import { handleError } from "@/lib/server/handleError";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { githubInstallLimiter } from "@/lib/server/redis/rate-limiters";
+import { githubInstallLimiter } from "@/lib/server/providers/rate-limiters";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
@@ -41,7 +37,7 @@ export async function POST(req: Request) {
 		}
 
 		// 4. Verify installation via GitHub
-		const installation = await verifyInstallation(installationId);
+		const installation = await gitAppProvider.verifyInstallation(installationId);
 
 		// 5. Find or create installation in DB (keyed on installationId, not user)
 		const existing = await prisma.providerInstallation.findUnique({
@@ -83,21 +79,18 @@ export async function POST(req: Request) {
 		}
 
 		// 6. Fetch repos from GitHub
-		const reposList = await githubFetch<IGitHubReposResponse>(
-			installationId,
-			"/installation/repositories",
-		);
+		const reposList = await gitApiProvider.listRepositories(installationId);
 
-		if (!reposList.data.repositories) {
+		if (!reposList.repositories) {
 			throw new BadRequestError("No repositories found for this installation");
 		}
 
-		const repos = reposList.data.repositories.map((r: IGitHubRepo) => ({
+		const repos = reposList.repositories.map((r) => ({
 			provider: Provider.github,
 			providerRepoId: r.id.toString(),
 			name: r.name,
-			isPrivate: r.private,
-			defaultBranch: r.default_branch || "main",
+			isPrivate: r.isPrivate,
+			defaultBranch: r.defaultBranch || "main",
 			owner: r.owner.login,
 		}));
 

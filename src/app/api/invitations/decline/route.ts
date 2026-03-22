@@ -9,7 +9,7 @@ import {
 	UnauthorizedError,
 } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { sendInvitationDeclinedEmail } from "@/lib/server/resend/emails/InvitationDeclined";
+import { emailProvider } from "@/lib/server/providers/email";
 import { getCurrentUser } from "@/lib/server/session";
 
 const prisma = getPrisma();
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 		});
 
 		if (ownerMember) {
-			await sendInvitationDeclinedEmail({
+			await emailProvider.sendInvitationDeclined({
 				to: ownerMember.user.email,
 				repoName: invitation.repository.name,
 				declinedBy: user.username,

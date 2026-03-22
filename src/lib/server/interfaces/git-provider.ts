@@ -1,4 +1,6 @@
-// ─── Data types ──────────────────────────────────────────────
+// ============================
+// ======== Data types ========
+// ============================
 
 /** A verified provider installation (e.g., GitHub App installation). */
 export interface GitInstallationInfo {
@@ -63,7 +65,9 @@ export interface GitRepositoriesResponse {
 	repositories: GitRepository[];
 }
 
-// ─── Interfaces ──────────────────────────────────────────────
+// ============================
+// ======== Interfaces ========
+// ============================
 
 /**
  * App-level operations for a git provider installation.
@@ -104,6 +108,14 @@ export interface IGitProviderApi {
 		baseBranch: string,
 		compareBranch: string,
 	): Promise<GitCompareResult>;
+
+	/** Get the approximate commit count for a branch. */
+	getCommitCount(
+		installationId: string,
+		owner: string,
+		repo: string,
+		branch: string,
+	): Promise<number>;
 
 	/** Create a pull request on the provider. */
 	createPullRequest(

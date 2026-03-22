@@ -108,6 +108,41 @@ export class GitHubApiProvider implements IGitProviderApi {
 		};
 	}
 
+	async getCommitCount(
+		installationId: string,
+		owner: string,
+		repo: string,
+		branch: string,
+	): Promise<number> {
+		const { token } = await this.gitApp.createInstallationAccessToken(
+			installationId,
+		);
+
+		const res = await fetch(
+			`https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=1&page=1`,
+			{
+				headers: {
+					Authorization: `Bearer ${token}`,
+					Accept: "application/vnd.github+json",
+				},
+			},
+		);
+
+		if (!res.ok) {
+			const body = await res.json().catch(() => null);
+			throw new GitHubApiError(
+				res.status,
+				body?.message ?? "GitHub API error",
+			);
+		}
+
+		const linkHeader = res.headers.get("link");
+		if (!linkHeader) return 1;
+
+		const match = linkHeader.match(/&page=(\d+)>; rel="last"/);
+		return match ? Number.parseInt(match[1], 10) : 1;
+	}
+
 	async createPullRequest(
 		installationId: string,
 		owner: string,
@@ -140,7 +175,9 @@ export class GitHubApiProvider implements IGitProviderApi {
 		};
 	}
 
-	// ─── Internal helpers ────────────────────────────────────
+	// ==================================
+	// ======== Internal helpers ========
+	// ==================================
 
 	private async fetch<T>(
 		installationId: string,

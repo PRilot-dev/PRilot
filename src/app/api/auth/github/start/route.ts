@@ -4,7 +4,7 @@ import { config } from "@/lib/server/config";
 import { handleError } from "@/lib/server/handleError";
 import { getClientIp } from "@/lib/server/ip";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { githubOAuthStartLimiter } from "@/lib/server/redis/rate-limiters";
+import { githubOAuthStartLimiter } from "@/lib/server/providers/rate-limiters";
 
 const OAUTH_STATE_MAX_AGE = 60 * 10; // 10 minutes
 

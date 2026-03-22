@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 import sanitizeHtml from "sanitize-html";
 import z from "zod";
 import { getPrisma } from "@/db";
-import { config } from "@/lib/server/config";
-import { BadRequestError, UnauthorizedError } from "@/lib/server/error";
+import { BadRequestError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
+import { oauthProvider } from "@/lib/server/providers/oauth";
 import {
 	generateAccessToken,
 	generateRefreshToken,
@@ -13,20 +13,6 @@ import {
 } from "@/lib/server/token";
 
 const prisma = getPrisma();
-
-type GitHubTokenResponse = {
-	access_token?: string;
-	token_type?: string;
-	scope?: string;
-	error?: string;
-	error_description?: string;
-};
-
-type GitHubUser = {
-	id?: number;
-	login?: string;
-	email?: string | null;
-};
 
 export async function POST(req: Request) {
 	try {
@@ -47,66 +33,16 @@ export async function POST(req: Request) {
 			throw new BadRequestError("Invalid OAuth state");
 		}
 
-		// 3. Exchange code for GitHub access token
+		// 3. Exchange code for access token + fetch user profile
 		const safeCode = sanitizeHtml(code);
-		const tokenRes = await fetch(
-			"https://github.com/login/oauth/access_token",
-			{
-				method: "POST",
-				headers: { Accept: "application/json" },
-				body: new URLSearchParams({
-					client_id: config.github.clientId,
-					client_secret: config.github.clientSecret,
-					code: safeCode,
-				}),
-			},
-		);
-		const tokenData = (await tokenRes.json()) as GitHubTokenResponse;
-		if (!tokenData.access_token) {
-			throw new UnauthorizedError("Failed to get access token");
-		}
+		const { accessToken: ghAccessToken } = await oauthProvider.exchangeCodeForToken(safeCode);
+		const ghUser = await oauthProvider.getUserProfile(ghAccessToken);
 
-		// 4. Fetch GitHub user profile
-		const ghUserRes = await fetch("https://api.github.com/user", {
-			headers: { Authorization: `Bearer ${tokenData.access_token}` },
-		});
-		const ghUser = (await ghUserRes.json()) as GitHubUser;
-
-		// 5. Resolve email (fetch from /user/emails if private)
-		let email = ghUser.email;
-		if (!email) {
-			const ghEmailsRes = await fetch("https://api.github.com/user/emails", {
-				headers: { Authorization: `Bearer ${tokenData.access_token}` },
-			});
-
-			if (!ghEmailsRes.ok) {
-				throw new UnauthorizedError("Failed to fetch GitHub emails");
-			}
-
-			const emailsData = await ghEmailsRes.json();
-			const emails = Array.isArray(emailsData) ? emailsData : [];
-
-			const primaryEmail = emails.find(
-				(e: any) => e.primary && e.verified && typeof e.email === "string",
-			)?.email;
-
-			if (!primaryEmail) {
-				throw new UnauthorizedError("No verified GitHub email found");
-			}
-
-			email = primaryEmail;
-		}
-
-		// 6. Validate essential GitHub user info
-		if (!ghUser.id || !ghUser.login || !email) {
-			throw new UnauthorizedError("Failed to get GitHub user info");
-		}
-
-		// 7. Find or create user
+		// 4. Find or create user
 		let user = await prisma.user.findFirst({
 			where: {
 				oauthIds: {
-					some: { provider: "github", providerUserId: ghUser.id.toString() },
+					some: { provider: "github", providerUserId: ghUser.providerUserId },
 				},
 			},
 			include: { oauthIds: true },
@@ -114,7 +50,7 @@ export async function POST(req: Request) {
 
 		if (!user) {
 			user = await prisma.user.findUnique({
-				where: { email },
+				where: { email: ghUser.email },
 				include: { oauthIds: true },
 			});
 
@@ -123,7 +59,7 @@ export async function POST(req: Request) {
 					data: {
 						userId: user.id,
 						provider: "github",
-						providerUserId: ghUser.id.toString(),
+						providerUserId: ghUser.providerUserId,
 					},
 				});
 			}
@@ -132,12 +68,12 @@ export async function POST(req: Request) {
 		if (!user) {
 			user = await prisma.user.create({
 				data: {
-					email,
+					email: ghUser.email,
 					username: ghUser.login,
 					oauthIds: {
 						create: {
 							provider: "github",
-							providerUserId: ghUser.id.toString(),
+							providerUserId: ghUser.providerUserId,
 						},
 					},
 				},
@@ -145,11 +81,11 @@ export async function POST(req: Request) {
 			});
 		}
 
-		// 8. Remove sensitive info
+		// 5. Remove sensitive info
 		const { password: _password, oauthIds, ...safeUser } = user;
 		const oauthProviders = oauthIds.map((o) => o.provider);
 
-		// 9. Create response with session
+		// 6. Create response with session
 		const accessToken = await generateAccessToken(user);
 		const refreshToken = await generateRefreshToken(user);
 

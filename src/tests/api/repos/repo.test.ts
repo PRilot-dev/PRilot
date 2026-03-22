@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { DELETE, GET } from "@/app/api/repos/[repoId]/route";
-import { githubFetch } from "@/lib/server/github/client";
+import { gitApiProvider } from "@/lib/server/providers/git-api";
 import { getCurrentUser } from "@/lib/server/session";
 import { testPrisma } from "@/tests/db";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
@@ -12,17 +12,11 @@ import { mockUser, seedUser } from "@/tests/helpers/user";
 // ---------------------------------------------------------------------------
 describe("GET /api/repos/[repoId]", () => {
 	function mockGithubBranchesAndCommits() {
-		vi.mocked(githubFetch)
-			// branches
-			.mockResolvedValueOnce({
-				data: [{ name: "main" }, { name: "dev" }],
-				linkHeader: null,
-			} as never)
-			// commits count
-			.mockResolvedValueOnce({
-				data: [],
-				linkHeader: '<url?&page=42>; rel="last"',
-			} as never);
+		vi.mocked(gitApiProvider.listBranches).mockResolvedValueOnce([
+			{ name: "main", commitSha: "abc", isProtected: false },
+			{ name: "dev", commitSha: "def", isProtected: false },
+		]);
+		vi.mocked(gitApiProvider.getCommitCount).mockResolvedValueOnce(42);
 	}
 
 	it("returns 200 with repo details, branches, and commit count", async () => {
