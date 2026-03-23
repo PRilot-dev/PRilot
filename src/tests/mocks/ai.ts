@@ -24,13 +24,20 @@ const defaultPR: IPRResponse = {
 
 vi.mock("@/lib/server/ai/streamSSE", () => ({
 	createSSEResponse: vi.fn().mockImplementation(
-		async (handler: (send: (event: string, data: unknown) => void) => Promise<void>) => {
+		(handler: (send: (event: string, data: unknown) => void) => Promise<void>) => {
 			let result: unknown = null;
 			const send = (event: string, data: unknown) => {
 				if (event === "done") result = data;
 			};
-			await handler(send);
-			return Response.json(result ?? defaultPR, { status: 200 });
+			// Match real createSSEResponse behavior: errors inside the handler
+			// are caught and sent as error SSE events, not re-thrown.
+			return handler(send)
+				.then(() => Response.json(result ?? defaultPR, { status: 200 }))
+				.catch((err: Error & { status?: number }) => {
+					const status = err.status ?? 500;
+					const message = err.message ?? "Internal server error";
+					return Response.json({ error: message }, { status });
+				});
 		},
 	),
 	streamLLMTokens: vi.fn().mockResolvedValue({
@@ -45,15 +52,19 @@ vi.mock("@/lib/server/ai/streamSSE", () => ({
 	},
 }));
 
-// PR generation helpers — cached compare data + monthly limit
-vi.mock("@/lib/server/pr-generation", () => ({
-	fetchCachedCompareData: vi.fn().mockResolvedValue({
-		commits: ["feat: first commit", "fix: second commit"],
-		files: [],
-		cacheHit: false,
-	}),
-	checkMonthlyLimit: vi.fn().mockResolvedValue({
-		monthlyLimitKey: "ai:month:user:test",
-		isOwner: true,
-	}),
-}));
+// PR generation — pass through real classes, mock only utility functions
+vi.mock("@/lib/server/pr-generation", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@/lib/server/pr-generation")>();
+	return {
+		...actual,
+		fetchCachedCompareData: vi.fn().mockResolvedValue({
+			commits: ["feat: first commit", "fix: second commit"],
+			files: [],
+			cacheHit: false,
+		}),
+		checkMonthlyLimit: vi.fn().mockResolvedValue({
+			monthlyLimitKey: "ai:month:user:test",
+			isOwner: true,
+		}),
+	};
+});
