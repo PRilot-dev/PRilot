@@ -4,28 +4,30 @@ import { getPrisma } from "@/db";
 import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
-import { aiProvider } from "@/lib/server/providers/ai";
-import { buildPRFromDiffs, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
-import { createSSEResponse, streamLLMTokens } from "@/lib/server/ai/streamSSE";
+import { createSSEResponse } from "@/lib/server/ai/streamSSE";
 import {
 	BadRequestError,
 	ForbiddenError,
 	NotFoundError,
 	UnauthorizedError,
 } from "@/lib/server/error";
-import { prepareFileDiffForAI } from "@/lib/server/github/fileDiffs";
 import { handleError } from "@/lib/server/handleError";
-import { checkMonthlyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
-import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
+import {
+	checkMonthlyLimit,
+	DeepStrategy,
+	fetchCachedCompareData,
+	PRGenerationPipeline,
+} from "@/lib/server/pr-generation";
+import { aiProvider } from "@/lib/server/providers/ai";
 import { aiLimiterPerMinute, aiLimiterPerMonth } from "@/lib/server/providers/rate-limiters";
+import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import { getCurrentUser } from "@/lib/server/session";
 import type { IPRResponse } from "@/types/pullRequests";
-
 
 export const dynamic = "force-dynamic";
 
 const prisma = getPrisma();
-const MIN_DESCRIPTION_LENGTH = 500;
+const pipeline = new PRGenerationPipeline(aiProvider);
 
 export async function POST(
 	req: NextRequest,
@@ -75,9 +77,8 @@ export async function POST(
 			throw new ForbiddenError("You are not a member of this repository");
 		}
 
-		// 6. Fetch file diffs + commits (try prefetch cache first, fall back to GitHub)
-		const t0 = performance.now();
-		const { files, commits, cacheHit } = await fetchCachedCompareData({
+		// 6. Fetch compare data (try prefetch cache first, fall back to GitHub)
+		const compareData = await fetchCachedCompareData({
 			repoId,
 			baseBranch: safeBase,
 			compareBranch: safeCompare,
@@ -86,18 +87,6 @@ export async function POST(
 			repoOwner: repo.owner,
 			repoName: repo.name,
 		});
-		const totalChanges = files?.reduce((sum, f) => sum + f.changes, 0) ?? 0;
-		console.log(`[DEEP] File diffs: ${(performance.now() - t0).toFixed(0)}ms (${cacheHit ? "cache hit" : "GitHub fetch"}, ${files?.length ?? 0} files, ${totalChanges} lines changed)`);
-
-		if (!files || files.length === 0) {
-			throw new BadRequestError("No file changes found between branches");
-		}
-
-		if (totalChanges > 500) {
-			throw new BadRequestError(
-				"Too many lines changed (max 500 for deep mode). Please use fast mode instead.",
-			);
-		}
 
 		// 7. AI per-minute limit
 		const minuteLimit = await aiLimiterPerMinute.limit(
@@ -110,72 +99,21 @@ export async function POST(
 		if (monthlyResult instanceof NextResponse) return monthlyResult;
 		const { monthlyLimitKey, isOwner } = monthlyResult;
 
-		// 9. Prepare raw diffs for AI
-		const rawDiffs = files
-			.map((f) => prepareFileDiffForAI(f).patch)
-			.join("\n\n");
-
-		// 10. PR generation — streamed via SSE
+		// 9. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
-			async function streamGeneration() {
-				const completion = await aiProvider.createStreamingCompletion({
-					model: "openai/gpt-oss-120b",
-					messages: [
-						{
-							role: "system",
-							content: buildPRFromDiffs(language, safeCompare),
-						},
-						{
-							role: "user",
-							content: `File diffs:\n${rawDiffs}${commits.length > 0 ? `\n\nCommit messages:\n${commits.map((c) => `- ${c}`).join("\n")}` : ""}`,
-						},
-					],
-					responseFormat: { type: "json_object" },
-					temperature: 0.4,
-				});
+			const result = await pipeline.generate(new DeepStrategy(), {
+				compareData,
+				language,
+				compareBranch: safeCompare,
+				send,
+			});
 
-				return streamLLMTokens(completion, send);
-			}
+			if (!result) return;
 
-			// First attempt
-			const t4 = performance.now();
-			let result = await streamGeneration();
-			console.log(
-				`[DEEP] PR generation streamed (Groq): ${(performance.now() - t4).toFixed(0)}ms | tokens: ${result.usage?.promptTokens ?? "?"}in/${result.usage?.completionTokens ?? "?"}out/${result.usage?.totalTokens ?? "?"}total`,
-			);
+			// Success — consume monthly rate limit credit
+			const monthlyLimit = await aiLimiterPerMonth.limit(monthlyLimitKey);
 
-			let parsed = JSON.parse(result.text) as IPRResponse;
-
-			// Retry if description is too short
-			if (parsed.description.length < MIN_DESCRIPTION_LENGTH) {
-				console.log(
-					`[DEEP] Description too short (${parsed.description.length} chars), retrying...`,
-				);
-				send("retry", {});
-
-				const t6 = performance.now();
-				result = await streamGeneration();
-				console.log(
-					`[DEEP] PR generation retry streamed: ${(performance.now() - t6).toFixed(0)}ms | tokens: ${result.usage?.promptTokens ?? "?"}in/${result.usage?.completionTokens ?? "?"}out/${result.usage?.totalTokens ?? "?"}total`,
-				);
-
-				parsed = JSON.parse(result.text) as IPRResponse;
-
-				if (parsed.description.length < MIN_DESCRIPTION_LENGTH) {
-					send("error", {
-						message:
-							"AI generated a description that was too short. Please try again.",
-					});
-					return;
-				}
-			}
-
-			// 11. Success — consume monthly rate limit credit
-			const monthlyLimit =
-				await aiLimiterPerMonth.limit(monthlyLimitKey);
-
-			parsed.description = fixDescriptionHeaders(parsed.description);
-			const response: IPRResponse = { ...parsed };
+			const response: IPRResponse = { ...result };
 			if (isOwner) {
 				response.rateLimit = {
 					monthlyRemaining: monthlyLimit.remaining,
@@ -183,9 +121,6 @@ export async function POST(
 				};
 			}
 
-			console.log(
-				`[DEEP] Total: ${(performance.now() - t0).toFixed(0)}ms`,
-			);
 			send("done", response);
 		}, "[DEEP]");
 	} catch (error) {

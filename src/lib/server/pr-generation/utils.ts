@@ -11,7 +11,9 @@ import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import { formatDateTimeForErrors } from "@/lib/utils/formatDateTime";
 import type { IGitHubFile } from "@/types/commits";
 
-// ─── Cached compare data (cache → GitHub) ────────────────
+// ======================================================
+// ======== Cached compare data (cache → GitHub) ========
+// ======================================================
 
 interface CompareDataParams {
 	repoId: string;
@@ -83,7 +85,9 @@ export async function fetchCachedCompareData(
 	};
 }
 
-// ─── Monthly rate limit check ─────────────────────────────
+// ======================================================
+// ============= Monthly rate limit check ===============
+// ======================================================
 
 export async function checkMonthlyLimit(
 	members: { userId: string; role: string }[],

@@ -4,9 +4,7 @@ import { getPrisma } from "@/db";
 import { branchSchema } from "@/lib/schemas/branch.schema";
 import { uuidParam } from "@/lib/schemas/id.schema";
 import { languageSchema } from "@/lib/schemas/pr.schema";
-import { aiProvider } from "@/lib/server/providers/ai";
-import { buildPRFromCommits, fixDescriptionHeaders } from "@/lib/server/ai/prompt";
-import { createSSEResponse, streamLLMTokens } from "@/lib/server/ai/streamSSE";
+import { createSSEResponse } from "@/lib/server/ai/streamSSE";
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -14,15 +12,22 @@ import {
 	UnauthorizedError,
 } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { checkMonthlyLimit, fetchCachedCompareData } from "@/lib/server/pr-generation";
-import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
+import {
+	checkMonthlyLimit,
+	FastStrategy,
+	fetchCachedCompareData,
+	PRGenerationPipeline,
+} from "@/lib/server/pr-generation";
+import { aiProvider } from "@/lib/server/providers/ai";
 import { aiLimiterPerMinute, aiLimiterPerMonth } from "@/lib/server/providers/rate-limiters";
+import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
 import { getCurrentUser } from "@/lib/server/session";
 import type { IPRResponse } from "@/types/pullRequests";
 
 export const dynamic = "force-dynamic";
 
 const prisma = getPrisma();
+const pipeline = new PRGenerationPipeline(aiProvider);
 
 export async function POST(
 	req: NextRequest,
@@ -72,8 +77,8 @@ export async function POST(
 			throw new ForbiddenError("You are not a member of this repository");
 		}
 
-		// 6. Fetch commit messages (try prefetch cache first, fall back to GitHub)
-		const { commits, cacheHit } = await fetchCachedCompareData({
+		// 6. Fetch compare data (try prefetch cache first, fall back to GitHub)
+		const compareData = await fetchCachedCompareData({
 			repoId,
 			baseBranch: safeBase,
 			compareBranch: safeCompare,
@@ -82,56 +87,33 @@ export async function POST(
 			repoOwner: repo.owner,
 			repoName: repo.name,
 		});
-		console.log(`[FAST] Commits: ${cacheHit ? "cache hit" : "GitHub fetch"} (${commits.length} commits)`);
 
-		if (!commits.length) {
-			throw new BadRequestError("No commits found between branches");
-		}
-
-		// 8. AI per-minute limit
+		// 7. AI per-minute limit
 		const minuteLimit = await aiLimiterPerMinute.limit(
 			`ai:minute:user:${user.id}`,
 		);
 		rateLimitOrThrow(minuteLimit);
 
-		// 9. Owner-based monthly limit (check only, increment on success)
+		// 8. Owner-based monthly limit (check only, increment on success)
 		const monthlyResult = await checkMonthlyLimit(repo.members, user.id);
 		if (monthlyResult instanceof NextResponse) return monthlyResult;
 		const { monthlyLimitKey, isOwner } = monthlyResult;
 
-		// 10. PR generation — streamed via SSE
+		// 9. PR generation — streamed via SSE
 		return createSSEResponse(async (send) => {
-			const t0 = performance.now();
-			const completion = await aiProvider.createStreamingCompletion({
-				model: "openai/gpt-oss-120b",
-				messages: [
-					{
-						role: "system",
-						content: buildPRFromCommits(language, safeCompare),
-					},
-					{
-						role: "user",
-						content: commits
-							.map((c, i) => `${i + 1}. ${c}`)
-							.join("\n"),
-					},
-				],
-				responseFormat: { type: "json_object" },
-				temperature: 0.4,
+			const result = await pipeline.generate(new FastStrategy(), {
+				compareData,
+				language,
+				compareBranch: safeCompare,
+				send,
 			});
 
-			const { text, usage } = await streamLLMTokens(completion, send);
-			console.log(
-				`[FAST] PR generation streamed (Groq): ${(performance.now() - t0).toFixed(0)}ms | tokens: ${usage?.promptTokens ?? "?"}in/${usage?.completionTokens ?? "?"}out/${usage?.totalTokens ?? "?"}total`,
-			);
-
-			const parsed = JSON.parse(text) as IPRResponse;
+			if (!result) return;
 
 			// Success — consume monthly rate limit credit
 			const monthlyLimit = await aiLimiterPerMonth.limit(monthlyLimitKey);
 
-			parsed.description = fixDescriptionHeaders(parsed.description);
-			const response: IPRResponse = { ...parsed };
+			const response: IPRResponse = { ...result };
 			if (isOwner) {
 				response.rateLimit = {
 					monthlyRemaining: monthlyLimit.remaining,
