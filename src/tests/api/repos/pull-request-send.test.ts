@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { createPostHandler } from "@/app/api/repos/[repoId]/pull-requests/[prId]/send/route";
 import { GitHubApiError } from "@/lib/server/error";
 import { testPrisma } from "@/tests/db";
-import { mockGitApiProvider } from "@/tests/helpers/deps";
+import { createMockGetCurrentUser, mockGitApiProvider } from "@/tests/helpers/deps";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 const gitApiProvider = mockGitApiProvider();
 
 const POST = createPostHandler({

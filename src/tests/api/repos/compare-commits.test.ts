@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGetHandler } from "@/app/api/repos/[repoId]/compare-commits/github/route";
 import { testPrisma } from "@/tests/db";
-import { mockGitApiProvider, passingLimiter } from "@/tests/helpers/deps";
+import { createMockGetCurrentUser, mockGitApiProvider, passingLimiter } from "@/tests/helpers/deps";
 import { seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 const gitApiProvider = mockGitApiProvider();
 
 const GET = createGetHandler({

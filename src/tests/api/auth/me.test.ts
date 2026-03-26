@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { createGetHandler } from "@/app/api/auth/me/route";
 import { parseJson } from "@/tests/helpers/request";
 import { mockUser } from "@/tests/helpers/user";
+import { createMockGetCurrentUser } from "@/tests/helpers/deps";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 
 const GET = createGetHandler({ getCurrentUser: mockGetCurrentUser });
 

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGetHandler } from "@/app/api/user/credits/route";
-import { passingLimiter } from "@/tests/helpers/deps";
+import { createMockGetCurrentUser, passingLimiter } from "@/tests/helpers/deps";
 import { parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 const aiLimiterPerMonth = passingLimiter();
 
 const GET = createGetHandler({

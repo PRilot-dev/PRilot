@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPostHandler } from "@/app/api/repos/[repoId]/invitations/route";
 import { testPrisma } from "@/tests/db";
-import { mockEmailProvider, passingLimiter } from "@/tests/helpers/deps";
+import { createMockGetCurrentUser, mockEmailProvider, passingLimiter } from "@/tests/helpers/deps";
 import { seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 
 const POST = createPostHandler({
 	prisma: testPrisma,

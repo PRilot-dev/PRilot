@@ -3,8 +3,9 @@ import { createPostHandler } from "@/app/api/auth/logout-all/route";
 import { testPrisma } from "@/tests/db";
 import { parseJson } from "@/tests/helpers/request";
 import { mockUser } from "@/tests/helpers/user";
+import { createMockGetCurrentUser } from "@/tests/helpers/deps";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 
 const POST = createPostHandler({
 	prisma: testPrisma,

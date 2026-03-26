@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPostHandler } from "@/app/api/repos/[repoId]/pull-requests/generate/prefetch/route";
 import { testPrisma } from "@/tests/db";
-import { mockCacheProvider, mockGitApiProvider, passingLimiter } from "@/tests/helpers/deps";
+import { createMockGetCurrentUser, mockCacheProvider, mockGitApiProvider, passingLimiter } from "@/tests/helpers/deps";
 import { seedRepo, validBranchBody } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 const gitApiProvider = mockGitApiProvider();
 
 const POST = createPostHandler({

@@ -16,6 +16,14 @@ import type {
 	IRateLimiter,
 } from "@/lib/server/interfaces";
 
+/**
+ * A mock getCurrentUser that returns null (unauthenticated) by default.
+ * Override per-test: mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }))
+ */
+export function createMockGetCurrentUser() {
+	return vi.fn().mockResolvedValue(null);
+}
+
 export function passingLimiter(): IRateLimiter {
 	return {
 		limit: vi

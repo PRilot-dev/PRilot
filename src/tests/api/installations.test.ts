@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { createPostHandler } from "@/app/api/installations/github/route";
 import { createGetHandler } from "@/app/api/installations/route";
 import { testPrisma } from "@/tests/db";
-import { mockGitApiProvider, mockGitAppProvider, passingLimiter } from "@/tests/helpers/deps";
+import { createMockGetCurrentUser, mockGitApiProvider, mockGitAppProvider, passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 const gitApiProvider = mockGitApiProvider();
 const gitAppProvider = mockGitAppProvider();
 

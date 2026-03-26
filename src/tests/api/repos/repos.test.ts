@@ -4,8 +4,9 @@ import { testPrisma } from "@/tests/db";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
 import { parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+import { createMockGetCurrentUser } from "@/tests/helpers/deps";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 
 const GET = createGetHandler({
 	prisma: testPrisma,

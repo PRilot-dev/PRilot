@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { createPatchHandler, createPostHandler } from "@/app/api/auth/password/route";
 import { verifyPassword } from "@/lib/server/password";
 import { testPrisma } from "@/tests/db";
-import { passingLimiter } from "@/tests/helpers/deps";
+import { createMockGetCurrentUser, passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser } from "@/tests/helpers/user";
 
-const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const mockGetCurrentUser = createMockGetCurrentUser();
 
 const deps = {
 	prisma: testPrisma,
