@@ -1,10 +1,5 @@
 import { vi } from "vitest";
 
-// Session — unauthenticated by default; override per-test with mockResolvedValue
-vi.mock("@/lib/server/session", () => ({
-	getCurrentUser: vi.fn().mockResolvedValue(null),
-}));
-
 // Token helpers — avoid real JWT signing and DB refresh-token writes
 vi.mock("@/lib/server/token", () => ({
 	createSession: vi.fn().mockResolvedValue(undefined),
