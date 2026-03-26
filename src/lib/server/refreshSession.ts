@@ -1,12 +1,22 @@
 import "server-only";
 
-import { getPrisma } from "@/db";
+import type { PrismaClient } from "@/db";
+import { prisma as defaultPrisma } from "@/db";
 import { UnauthorizedError } from "@/lib/server/error";
+import type { IRateLimiter } from "@/lib/server/interfaces";
+import { refreshLimiter as defaultRefreshLimiter } from "@/lib/server/providers/rate-limiters";
 import { rateLimitOrThrow } from "@/lib/server/redis/rate-limit";
-import { refreshLimiter } from "@/lib/server/providers/rate-limiters";
 import { generateAccessToken, generateRefreshToken } from "@/lib/server/token";
 
-const prisma = getPrisma();
+interface RefreshSessionDeps {
+  prisma: PrismaClient;
+  refreshLimiter: IRateLimiter;
+}
+
+const defaultDeps: RefreshSessionDeps = {
+  prisma: defaultPrisma,
+  refreshLimiter: defaultRefreshLimiter,
+};
 
 interface RefreshResult {
   accessToken: string;
@@ -19,9 +29,10 @@ interface RefreshResult {
  */
 export async function refreshSession(
   currentRefreshToken: string,
+  deps: RefreshSessionDeps = defaultDeps,
 ): Promise<RefreshResult> {
   // 1. Validate refresh token in DB
-  const stored = await prisma.refreshToken.findUnique({
+  const stored = await deps.prisma.refreshToken.findUnique({
     where: { token: currentRefreshToken },
   });
 
@@ -34,17 +45,17 @@ export async function refreshSession(
   }
 
   // 2. Rate limit per user
-  const limit = await refreshLimiter.limit(`refresh:user:${stored.userId}`);
+  const limit = await deps.refreshLimiter.limit(`refresh:user:${stored.userId}`);
   rateLimitOrThrow(limit);
 
   // 3. Get user
-  const user = await prisma.user.findUnique({ where: { id: stored.userId } });
+  const user = await deps.prisma.user.findUnique({ where: { id: stored.userId } });
   if (!user) {
     throw new Error("User not found");
   }
 
   // 4. Rotate tokens
-  await prisma.refreshToken.delete({ where: { id: stored.id } });
+  await deps.prisma.refreshToken.delete({ where: { id: stored.id } });
   const newAccessToken = await generateAccessToken(user);
   const newRefreshToken = await generateRefreshToken(user);
 

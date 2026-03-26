@@ -4,8 +4,8 @@ import crypto from "node:crypto";
 import { errors, jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
-import type { User } from "@/db";
-import { getPrisma } from "@/db";
+import type { PrismaClient, User } from "@/db";
+import { prisma as defaultPrisma } from "@/db";
 import { UnauthorizedError } from "@/lib/server/error";
 import { config } from "./config";
 
@@ -14,7 +14,6 @@ export const REFRESH_TOKEN_DURATION_IN_MS = 7 * 24 * 60 * 60 * 1000; // 7d
 
 const secret = new TextEncoder().encode(config.jwt.secret);
 
-const prisma = getPrisma();
 
 // ----------------------------
 // -------- Decode JWT --------
@@ -52,15 +51,15 @@ export async function generateAccessToken(user: User) {
 // ----------------------------------
 // ----- Generate refresh token -----
 // ----------------------------------
-export async function generateRefreshToken(user: User) {
+export async function generateRefreshToken(user: User, db: PrismaClient = defaultPrisma) {
   const refreshToken = crypto.randomBytes(64).toString("base64");
 
   // Clean up expired tokens for this user
-  await prisma.refreshToken.deleteMany({
+  await db.refreshToken.deleteMany({
     where: { userId: user.id, expiresAt: { lt: new Date() } },
   });
 
-  await prisma.refreshToken.create({
+  await db.refreshToken.create({
     data: {
       userId: user.id,
       token: refreshToken,
