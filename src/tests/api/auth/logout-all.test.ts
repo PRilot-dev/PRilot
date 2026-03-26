@@ -1,9 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/auth/logout-all/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createPostHandler } from "@/app/api/auth/logout-all/route";
 import { testPrisma } from "@/tests/db";
 import { parseJson } from "@/tests/helpers/request";
 import { mockUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	getCurrentUser: mockGetCurrentUser,
+});
 
 describe("POST /api/auth/logout-all", () => {
 	async function seedUserWithTokens(tokenCount = 3) {
@@ -29,7 +35,7 @@ describe("POST /api/auth/logout-all", () => {
 	it("returns 200 and deletes all refresh tokens for the user", async () => {
 		// ARRANGE
 		const user = await seedUserWithTokens(3);
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: user.id }),
 		);
 
@@ -73,7 +79,7 @@ describe("POST /api/auth/logout-all", () => {
 				expiresAt: new Date(Date.now() + 86_400_000),
 			},
 		});
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: user.id }),
 		);
 
@@ -90,7 +96,7 @@ describe("POST /api/auth/logout-all", () => {
 	it("clears cookie headers in the response", async () => {
 		// ARRANGE
 		const user = await seedUserWithTokens(1);
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: user.id }),
 		);
 

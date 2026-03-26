@@ -1,8 +1,14 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { POST } from "@/app/api/auth/reset-password/route";
+import { createPostHandler } from "@/app/api/auth/reset-password/route";
 import { testPrisma } from "@/tests/db";
+import { passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	resetPasswordLimiter: passingLimiter(),
+});
 
 describe("POST /api/auth/reset-password", () => {
 	const validToken = crypto.randomBytes(32).toString("hex"); // 64 chars

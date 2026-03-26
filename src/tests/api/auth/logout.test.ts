@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/auth/logout/route";
+import { createPostHandler } from "@/app/api/auth/logout/route";
 import { testPrisma } from "@/tests/db";
+
+const POST = createPostHandler({ prisma: testPrisma });
 
 describe("POST /api/auth/logout", () => {
 	async function seedUserWithToken() {

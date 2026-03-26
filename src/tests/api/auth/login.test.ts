@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/auth/login/route";
+import { createPostHandler } from "@/app/api/auth/login/route";
 import { verifyPassword } from "@/lib/server/password";
 import { testPrisma } from "@/tests/db";
+import { passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	loginLimiter: passingLimiter(),
+});
 
 describe("POST /api/auth/login", () => {
 	const validBody = {

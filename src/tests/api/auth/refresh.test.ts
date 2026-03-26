@@ -1,8 +1,17 @@
 import { cookies } from "next/headers";
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/auth/refresh/route";
+import { createPostHandler } from "@/app/api/auth/refresh/route";
+import { refreshSession as realRefreshSession } from "@/lib/server/refreshSession";
 import { testPrisma } from "@/tests/db";
+import { passingLimiter } from "@/tests/helpers/deps";
 import { parseJson } from "@/tests/helpers/request";
+
+// Wrap realRefreshSession so it uses testPrisma + a passing limiter
+const testRefreshLimiter = passingLimiter();
+const refreshSession: typeof realRefreshSession = (token) =>
+	realRefreshSession(token, { prisma: testPrisma, refreshLimiter: testRefreshLimiter });
+
+const POST = createPostHandler({ refreshSession });
 
 describe("POST /api/auth/refresh", () => {
 	async function seedUserWithToken(

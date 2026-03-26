@@ -1,10 +1,17 @@
 import { cookies } from "next/headers";
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/auth/github/callback/route";
-import { oauthProvider } from "@/lib/server/providers/oauth";
+import { createPostHandler } from "@/app/api/auth/github/callback/route";
 import { testPrisma } from "@/tests/db";
+import { mockOAuthProvider } from "@/tests/helpers/deps";
 import { GITHUB_USER } from "@/tests/helpers/github";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
+
+const oauthProvider = mockOAuthProvider();
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	oauthProvider,
+});
 
 const OAUTH_STATE = "valid-state-token";
 
