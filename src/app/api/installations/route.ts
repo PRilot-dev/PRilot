@@ -1,30 +1,40 @@
 import { NextResponse } from "next/server";
-import { getPrisma } from "@/db";
+import type { PrismaClient } from "@/db";
+import { prisma } from "@/db";
 import { UnauthorizedError } from "@/lib/server/error";
 import { handleError } from "@/lib/server/handleError";
-import { getCurrentUser } from "@/lib/server/session";
+import { getCurrentUser as defaultGetCurrentUser } from "@/lib/server/session";
 
-const prisma = getPrisma();
-
-export async function GET() {
-	try {
-		const user = await getCurrentUser();
-		if (!user) throw new UnauthorizedError("Unauthenticated");
-
-		// Fetch installations created by this user
-		const installations = await prisma.providerInstallation.findMany({
-			where: { createdById: user.id },
-			select: {
-				id: true,
-				provider: true,
-				installationId: true,
-				accountLogin: true,
-				accountType: true,
-			},
-		});
-
-		return NextResponse.json({ installations });
-	} catch (error) {
-		return handleError(error);
-	}
+interface Deps {
+	prisma: PrismaClient;
+	getCurrentUser: typeof defaultGetCurrentUser;
 }
+
+const defaultDeps: Deps = { prisma, getCurrentUser: defaultGetCurrentUser };
+
+export function createGetHandler(deps: Deps = defaultDeps) {
+	return async () => {
+		try {
+			const user = await deps.getCurrentUser();
+			if (!user) throw new UnauthorizedError("Unauthenticated");
+
+			// Fetch installations created by this user
+			const installations = await deps.prisma.providerInstallation.findMany({
+				where: { createdById: user.id },
+				select: {
+					id: true,
+					provider: true,
+					installationId: true,
+					accountLogin: true,
+					accountType: true,
+				},
+			});
+
+			return NextResponse.json({ installations });
+		} catch (error) {
+			return handleError(error);
+		}
+	};
+}
+
+export const GET = createGetHandler();

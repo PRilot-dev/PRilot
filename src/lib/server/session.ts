@@ -1,9 +1,9 @@
-import { getPrisma } from "@/db";
+import type { PrismaClient } from "@/db";
+import { prisma as defaultPrisma } from "@/db";
 import { decodeJWT, extractAccessToken } from "./token";
 
-const prisma = getPrisma();
 
-export async function getCurrentUser() {
+export async function getCurrentUser(db: PrismaClient = defaultPrisma) {
   try {
     const token = await extractAccessToken();
     const payload = await decodeJWT(token);
@@ -11,7 +11,7 @@ export async function getCurrentUser() {
     const userId = payload.userId as string;
     if (!userId) return null;
 
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: userId },
       include: { oauthIds: true }, // include OAuth associations
     });
