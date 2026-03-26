@@ -1,16 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/repos/[repoId]/pull-requests/generate/prefetch/route";
-import { gitApiProvider } from "@/lib/server/providers/git-api";
-import { getCurrentUser } from "@/lib/server/session";
+import { createPostHandler } from "@/app/api/repos/[repoId]/pull-requests/generate/prefetch/route";
+import { testPrisma } from "@/tests/db";
+import { mockCacheProvider, mockGitApiProvider, passingLimiter } from "@/tests/helpers/deps";
 import { seedRepo, validBranchBody } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const gitApiProvider = mockGitApiProvider();
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	cacheProvider: mockCacheProvider(),
+	gitApiProvider,
+	githubCompareCommitsLimiter: passingLimiter(),
+	getCurrentUser: mockGetCurrentUser,
+});
 
 describe("POST /api/repos/[repoId]/pull-requests/generate/prefetch", () => {
 	it("returns 200 and caches compare data", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		vi.mocked(gitApiProvider.compareBranches).mockResolvedValueOnce({
 			commits: ["feat: something"],
@@ -34,7 +45,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/prefetch", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/generate/prefetch`, {
 			body: validBranchBody(),
@@ -53,7 +64,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/prefetch", () => {
 	it("returns 404 when repo does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildRequest("POST", `/api/repos/${fakeId}/pull-requests/generate/prefetch`, {
 			body: validBranchBody(),
@@ -72,7 +83,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/prefetch", () => {
 	it("returns 422 when branches are missing", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/generate/prefetch`, {
 			body: { baseBranch: "", compareBranch: "" },

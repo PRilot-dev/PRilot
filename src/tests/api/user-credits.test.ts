@@ -1,15 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
-import { GET } from "@/app/api/user/credits/route";
-import { aiLimiterPerMonth } from "@/lib/server/providers/rate-limiters";
-import { getCurrentUser } from "@/lib/server/session";
+import { createGetHandler } from "@/app/api/user/credits/route";
+import { passingLimiter } from "@/tests/helpers/deps";
 import { parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const aiLimiterPerMonth = passingLimiter();
+
+const GET = createGetHandler({
+	aiLimiterPerMonth,
+	getCurrentUser: mockGetCurrentUser,
+});
 
 describe("GET /api/user/credits", () => {
 	it("returns 200 with remaining credits and total", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 
 		// ACT
 		const res = await GET();
@@ -25,7 +32,7 @@ describe("GET /api/user/credits", () => {
 	it("reflects custom remaining value", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		vi.mocked(aiLimiterPerMonth.getRemaining).mockResolvedValueOnce({
 			remaining: 5,
 			reset: Date.now() + 60_000,

@@ -1,16 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/repos/[repoId]/pull-requests/draft/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createPostHandler } from "@/app/api/repos/[repoId]/pull-requests/draft/route";
 import { testPrisma } from "@/tests/db";
 import { seedRepo, validDraftBody } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
 
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	getCurrentUser: mockGetCurrentUser,
+});
+
 describe("POST /api/repos/[repoId]/pull-requests/draft", () => {
 	it("creates a draft PR and returns 201", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const body = validDraftBody();
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/draft`, { body });
@@ -39,7 +45,7 @@ describe("POST /api/repos/[repoId]/pull-requests/draft", () => {
 	it("respects language and mode overrides", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const body = validDraftBody({ language: "French", mode: "deep" });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/draft`, { body });
@@ -61,7 +67,7 @@ describe("POST /api/repos/[repoId]/pull-requests/draft", () => {
 	it("sanitizes HTML in title and body", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const body = validDraftBody({
 			prTitle: "Fix <script>alert('xss')</script> bug",
@@ -86,7 +92,7 @@ describe("POST /api/repos/[repoId]/pull-requests/draft", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const body = validDraftBody();
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/draft`, { body });
@@ -104,7 +110,7 @@ describe("POST /api/repos/[repoId]/pull-requests/draft", () => {
 	it("returns 404 when repo does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const body = validDraftBody();
 		const req = buildRequest("POST", `/api/repos/${fakeId}/pull-requests/draft`, { body });
@@ -122,7 +128,7 @@ describe("POST /api/repos/[repoId]/pull-requests/draft", () => {
 	it("returns 422 when body is invalid", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/draft`, {
 			body: { prTitle: "ab", prBody: "", baseBranch: "", compareBranch: "" },

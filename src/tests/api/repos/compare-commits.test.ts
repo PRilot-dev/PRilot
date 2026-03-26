@@ -1,10 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
-import { GET } from "@/app/api/repos/[repoId]/compare-commits/github/route";
-import { gitApiProvider } from "@/lib/server/providers/git-api";
-import { getCurrentUser } from "@/lib/server/session";
+import { createGetHandler } from "@/app/api/repos/[repoId]/compare-commits/github/route";
+import { testPrisma } from "@/tests/db";
+import { mockGitApiProvider, passingLimiter } from "@/tests/helpers/deps";
 import { seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const gitApiProvider = mockGitApiProvider();
+
+const GET = createGetHandler({
+	prisma: testPrisma,
+	gitApiProvider,
+	githubCompareCommitsLimiter: passingLimiter(),
+	getCurrentUser: mockGetCurrentUser,
+});
 
 describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 	function buildCompareRequest(repoId: string, base = "main", compare = "feature") {
@@ -17,7 +27,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 	it("returns 200 with commits from GitHub", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const mockCommits = ["feat: something"];
 		vi.mocked(gitApiProvider.compareBranches).mockResolvedValueOnce({ commits: mockCommits, files: [] });
@@ -37,7 +47,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const req = buildCompareRequest(repository.id);
 		const ctx = buildParams({ repoId: repository.id });
@@ -54,7 +64,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 	it("returns 404 when repo does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildCompareRequest(fakeId);
 		const ctx = buildParams({ repoId: fakeId });
@@ -71,7 +81,7 @@ describe("GET /api/repos/[repoId]/compare-commits/github", () => {
 	it("returns 422 when branch params are missing", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const req = buildRequest("GET", `/api/repos/${repository.id}/compare-commits/github`);
 		const ctx = buildParams({ repoId: repository.id });

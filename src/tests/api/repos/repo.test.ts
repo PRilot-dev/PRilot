@@ -1,11 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
-import { DELETE, GET } from "@/app/api/repos/[repoId]/route";
-import { gitApiProvider } from "@/lib/server/providers/git-api";
-import { getCurrentUser } from "@/lib/server/session";
+import { createDeleteHandler, createGetHandler } from "@/app/api/repos/[repoId]/route";
 import { testPrisma } from "@/tests/db";
+import { mockGitApiProvider, passingLimiter } from "@/tests/helpers/deps";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const gitApiProvider = mockGitApiProvider();
+
+const deps = {
+	prisma: testPrisma,
+	gitApiProvider,
+	githubRepoLimiter: passingLimiter(),
+	getCurrentUser: mockGetCurrentUser,
+};
+
+const GET = createGetHandler(deps);
+const DELETE = createDeleteHandler(deps);
 
 // ---------------------------------------------------------------------------
 // GET /api/repos/[repoId]
@@ -22,7 +34,7 @@ describe("GET /api/repos/[repoId]", () => {
 	it("returns 200 with repo details, branches, and commit count", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		mockGithubBranchesAndCommits();
 		const req = buildRequest("GET", `/api/repos/${repository.id}`);
@@ -53,7 +65,7 @@ describe("GET /api/repos/[repoId]", () => {
 	it("returns isAccessible false for disconnected repos", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({
 			userId: user.id,
 			repoOverrides: { status: "disconnected" },
@@ -75,7 +87,7 @@ describe("GET /api/repos/[repoId]", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: other.id, role: "member" },
@@ -102,7 +114,7 @@ describe("GET /api/repos/[repoId]", () => {
 	it("returns 404 when repo does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildRequest("GET", `/api/repos/${fakeId}`);
 		const ctx = buildParams({ repoId: fakeId });
@@ -120,7 +132,7 @@ describe("GET /api/repos/[repoId]", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const req = buildRequest("GET", `/api/repos/${repository.id}`);
 		const ctx = buildParams({ repoId: repository.id });
@@ -156,7 +168,7 @@ describe("DELETE /api/repos/[repoId]", () => {
 	it("soft-deletes the repo and removes members and invitations", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		await testPrisma.invitation.create({
 			data: {
@@ -193,7 +205,7 @@ describe("DELETE /api/repos/[repoId]", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: member.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: member.id }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },
@@ -213,7 +225,7 @@ describe("DELETE /api/repos/[repoId]", () => {
 	it("returns 404 when repo does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildRequest("DELETE", `/api/repos/${fakeId}`);
 		const ctx = buildParams({ repoId: fakeId });
@@ -231,7 +243,7 @@ describe("DELETE /api/repos/[repoId]", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const req = buildRequest("DELETE", `/api/repos/${repository.id}`);
 		const ctx = buildParams({ repoId: repository.id });

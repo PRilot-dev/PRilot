@@ -1,17 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
-import { GET } from "@/app/api/repos/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createGetHandler } from "@/app/api/repos/route";
 import { testPrisma } from "@/tests/db";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
 import { parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+
+const GET = createGetHandler({
+	prisma: testPrisma,
+	getCurrentUser: mockGetCurrentUser,
+});
 
 describe("GET /api/repos", () => {
 
 	it("returns 200 with the user's repositories", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 
 		// ACT
@@ -31,7 +37,7 @@ describe("GET /api/repos", () => {
 	it("includes draft and sent PR counts", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		await seedPullRequest({ repositoryId: repository.id, createdById: user.id, overrides: { status: "draft" } });
 		await seedPullRequest({ repositoryId: repository.id, createdById: user.id, overrides: { status: "draft" } });
@@ -51,7 +57,7 @@ describe("GET /api/repos", () => {
 	it("excludes deleted repositories", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		await seedRepo({ userId: user.id, repoOverrides: { status: "deleted", name: "deleted-repo" } });
 		await seedRepo({ userId: user.id, repoOverrides: { name: "active-repo" } });
 
@@ -68,7 +74,7 @@ describe("GET /api/repos", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		await seedRepo({ userId: other.id, repoOverrides: { name: "not-mine" } });
 
 		// ACT
@@ -83,7 +89,7 @@ describe("GET /api/repos", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const inviter = await seedUser("inviter@example.com", "inviter");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: user.id, email: user.email }),
 		);
 		const { repository } = await seedRepo({ userId: inviter.id });

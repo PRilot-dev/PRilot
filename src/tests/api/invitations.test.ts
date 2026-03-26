@@ -1,11 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST as acceptPOST } from "@/app/api/invitations/accept/route";
-import { POST as declinePOST } from "@/app/api/invitations/decline/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createPostHandler as createAcceptHandler } from "@/app/api/invitations/accept/route";
+import { createPostHandler as createDeclineHandler } from "@/app/api/invitations/decline/route";
 import { testPrisma } from "@/tests/db";
+import { mockEmailProvider } from "@/tests/helpers/deps";
 import { seedRepo } from "@/tests/helpers/repo";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+const emailProvider = mockEmailProvider();
+
+const acceptPOST = createAcceptHandler({
+	prisma: testPrisma,
+	emailProvider,
+	getCurrentUser: mockGetCurrentUser,
+});
+
+const declinePOST = createDeclineHandler({
+	prisma: testPrisma,
+	emailProvider,
+	getCurrentUser: mockGetCurrentUser,
+});
 
 /** Generate a deterministic 64-char token. */
 function makeToken(suffix = "1") {
@@ -40,7 +55,7 @@ describe("POST /api/invitations/accept", () => {
 		// ARRANGE
 		const owner = await seedUser("owner@example.com", "owner");
 		const invitee = await seedUser("invitee@example.com", "invitee");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: invitee.id, email: invitee.email }),
 		);
 		const { repository } = await seedRepo({ userId: owner.id });
@@ -74,7 +89,7 @@ describe("POST /api/invitations/accept", () => {
 	it("returns 404 when invitation does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("POST", "/api/invitations/accept", {
 			body: { token: makeToken("notfound") },
 		});
@@ -92,7 +107,7 @@ describe("POST /api/invitations/accept", () => {
 		// ARRANGE
 		const owner = await seedUser("owner@example.com", "owner");
 		const invitee = await seedUser("invitee@example.com", "invitee");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: invitee.id, email: invitee.email }),
 		);
 		const { repository } = await seedRepo({ userId: owner.id });
@@ -119,7 +134,7 @@ describe("POST /api/invitations/accept", () => {
 		// ARRANGE
 		const owner = await seedUser("owner@example.com", "owner");
 		const wrongUser = await seedUser("wrong@example.com", "wronguser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: wrongUser.id, email: wrongUser.email }),
 		);
 		const { repository } = await seedRepo({ userId: owner.id });
@@ -163,7 +178,7 @@ describe("POST /api/invitations/decline", () => {
 		// ARRANGE
 		const owner = await seedUser("owner@example.com", "owner");
 		const invitee = await seedUser("invitee@example.com", "invitee");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: invitee.id, email: invitee.email }),
 		);
 		const { repository } = await seedRepo({ userId: owner.id });
@@ -196,7 +211,7 @@ describe("POST /api/invitations/decline", () => {
 	it("returns 404 when invitation does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("POST", "/api/invitations/decline", {
 			body: { token: makeToken("notfound") },
 		});
@@ -214,7 +229,7 @@ describe("POST /api/invitations/decline", () => {
 		// ARRANGE
 		const owner = await seedUser("owner@example.com", "owner");
 		const invitee = await seedUser("invitee@example.com", "invitee");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: invitee.id, email: invitee.email }),
 		);
 		const { repository } = await seedRepo({ userId: owner.id });
@@ -241,7 +256,7 @@ describe("POST /api/invitations/decline", () => {
 		// ARRANGE
 		const owner = await seedUser("owner@example.com", "owner");
 		const wrongUser = await seedUser("wrong@example.com", "wronguser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: wrongUser.id, email: wrongUser.email }),
 		);
 		const { repository } = await seedRepo({ userId: owner.id });

@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { GET } from "@/app/api/repos/[repoId]/pull-requests/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createGetHandler } from "@/app/api/repos/[repoId]/pull-requests/route";
 import { testPrisma } from "@/tests/db";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = vi.fn().mockResolvedValue(null);
+
+const GET = createGetHandler({
+	prisma: testPrisma,
+	getCurrentUser: mockGetCurrentUser,
+});
 
 type PrListResponse = {
 	pullRequests: { id: string; title: string; status: string }[];
@@ -15,7 +21,7 @@ describe("GET /api/repos/[repoId]/pull-requests", () => {
 	it("returns 200 with paginated pull requests", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		await seedPullRequest({ repositoryId: repository.id, createdById: user.id, overrides: { title: "PR 1" } });
 		await seedPullRequest({ repositoryId: repository.id, createdById: user.id, overrides: { title: "PR 2" } });
@@ -35,7 +41,7 @@ describe("GET /api/repos/[repoId]/pull-requests", () => {
 	it("filters by status=draft", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		await seedPullRequest({ repositoryId: repository.id, createdById: user.id, overrides: { status: "draft" } });
 		await seedPullRequest({ repositoryId: repository.id, createdById: user.id, overrides: { status: "sent" } });
@@ -55,7 +61,7 @@ describe("GET /api/repos/[repoId]/pull-requests", () => {
 	it("paginates correctly", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		for (let i = 0; i < 3; i++) {
 			await seedPullRequest({ repositoryId: repository.id, createdById: user.id, overrides: { title: `PR ${i}` } });
@@ -76,7 +82,7 @@ describe("GET /api/repos/[repoId]/pull-requests", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: other.id, role: "member" },
@@ -99,7 +105,7 @@ describe("GET /api/repos/[repoId]/pull-requests", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const req = buildRequest("GET", `/api/repos/${repository.id}/pull-requests`);
 		const ctx = buildParams({ repoId: repository.id });
