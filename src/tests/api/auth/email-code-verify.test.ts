@@ -1,9 +1,17 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { POST } from "@/app/api/auth/email-code/verify/route";
+import { createPostHandler } from "@/app/api/auth/email-code/verify/route";
 import { testPrisma } from "@/tests/db";
+import { mockCacheProvider, passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
-import { redisStore } from "@/tests/setup";
+
+const cacheProvider = mockCacheProvider();
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	emailCodeVerifyLimiter: passingLimiter(),
+	cacheProvider,
+});
 
 const EMAIL = "user@example.com";
 const CODE = "123456";
@@ -13,7 +21,7 @@ function seedRedisCode(
 	email: string,
 	overrides: { hash?: string; attempts?: number } = {},
 ) {
-	redisStore.set(`auth:email-code:${email}`, {
+	cacheProvider._store.set(`auth:email-code:${email}`, {
 		value: JSON.stringify({
 			hash: overrides.hash ?? CODE_HASH,
 			attempts: overrides.attempts ?? 0,
@@ -76,7 +84,7 @@ describe("POST /api/auth/email-code/verify", () => {
 		await POST(req);
 
 		// ASSERT
-		expect(redisStore.has(`auth:email-code:${EMAIL}`)).toBe(false);
+		expect(cacheProvider._store.has(`auth:email-code:${EMAIL}`)).toBe(false);
 	});
 
 	it("returns 400 when code is incorrect", async () => {
@@ -106,7 +114,7 @@ describe("POST /api/auth/email-code/verify", () => {
 		await POST(req);
 
 		// ASSERT
-		const entry = redisStore.get(`auth:email-code:${EMAIL}`);
+		const entry = cacheProvider._store.get(`auth:email-code:${EMAIL}`);
 		const parsed = JSON.parse(entry!.value);
 		expect(parsed.attempts).toBe(1);
 	});

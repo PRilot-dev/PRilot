@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import { GET } from "@/app/api/auth/me/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createGetHandler } from "@/app/api/auth/me/route";
 import { parseJson } from "@/tests/helpers/request";
 import { mockUser } from "@/tests/helpers/user";
+import { createMockGetCurrentUser } from "@/tests/helpers/deps";
+
+const mockGetCurrentUser = createMockGetCurrentUser();
+
+const GET = createGetHandler({ getCurrentUser: mockGetCurrentUser });
 
 describe("GET /api/auth/me", () => {
 	it("returns 200 with the current user when authenticated", async () => {
 		// ARRANGE
 		const user = mockUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(user);
+		mockGetCurrentUser.mockResolvedValueOnce(user);
 
 		// ACT
 		const res = await GET();

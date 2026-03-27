@@ -1,12 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/repos/[repoId]/pull-requests/[prId]/send/route";
+import { createPostHandler } from "@/app/api/repos/[repoId]/pull-requests/[prId]/send/route";
 import { GitHubApiError } from "@/lib/server/error";
-import { gitApiProvider } from "@/lib/server/providers/git-api";
-import { getCurrentUser } from "@/lib/server/session";
 import { testPrisma } from "@/tests/db";
+import { createMockGetCurrentUser, mockGitApiProvider } from "@/tests/helpers/deps";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = createMockGetCurrentUser();
+const gitApiProvider = mockGitApiProvider();
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	gitApiProvider,
+	getCurrentUser: mockGetCurrentUser,
+});
 
 function prParams(repoId: string, prId: string) {
 	return buildParams({ repoId, prId });
@@ -16,7 +24,7 @@ describe("POST /api/repos/[repoId]/pull-requests/[prId]/send", () => {
 	it("sends a draft PR to GitHub and returns the URL", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
 		vi.mocked(gitApiProvider.createPullRequest).mockResolvedValueOnce({
@@ -43,7 +51,7 @@ describe("POST /api/repos/[repoId]/pull-requests/[prId]/send", () => {
 	it("returns 400 when PR is already sent", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({
 			repositoryId: repository.id,
@@ -65,7 +73,7 @@ describe("POST /api/repos/[repoId]/pull-requests/[prId]/send", () => {
 	it("marks repo as disconnected when GitHub returns 403", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
 		vi.mocked(gitApiProvider.createPullRequest).mockRejectedValueOnce(
@@ -93,7 +101,7 @@ describe("POST /api/repos/[repoId]/pull-requests/[prId]/send", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: member.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: member.id }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },
@@ -115,7 +123,7 @@ describe("POST /api/repos/[repoId]/pull-requests/[prId]/send", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: other.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/${pr.id}/send`);
@@ -133,7 +141,7 @@ describe("POST /api/repos/[repoId]/pull-requests/[prId]/send", () => {
 	it("returns 404 when PR does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/${fakeId}/send`);

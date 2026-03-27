@@ -1,12 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/installations/github/route";
-import { GET } from "@/app/api/installations/route";
-import { gitApiProvider } from "@/lib/server/providers/git-api";
-import { gitAppProvider } from "@/lib/server/providers/git-app";
-import { getCurrentUser } from "@/lib/server/session";
+import { createPostHandler } from "@/app/api/installations/github/route";
+import { createGetHandler } from "@/app/api/installations/route";
 import { testPrisma } from "@/tests/db";
+import { createMockGetCurrentUser, mockGitApiProvider, mockGitAppProvider, passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = createMockGetCurrentUser();
+const gitApiProvider = mockGitApiProvider();
+const gitAppProvider = mockGitAppProvider();
+
+const GET = createGetHandler({
+	prisma: testPrisma,
+	getCurrentUser: mockGetCurrentUser,
+});
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	gitApiProvider,
+	gitAppProvider,
+	githubInstallLimiter: passingLimiter(),
+	getCurrentUser: mockGetCurrentUser,
+});
 
 // ---------------------------------------------------------------------------
 // GET /api/installations
@@ -15,7 +30,7 @@ describe("GET /api/installations", () => {
 	it("returns 200 with user's installations", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		await testPrisma.providerInstallation.create({
 			data: {
 				provider: "github",
@@ -39,7 +54,7 @@ describe("GET /api/installations", () => {
 	it("returns empty array when user has no installations", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 
 		// ACT
 		const res = await GET();
@@ -54,7 +69,7 @@ describe("GET /api/installations", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		await testPrisma.providerInstallation.create({
 			data: {
 				provider: "github",
@@ -90,7 +105,7 @@ describe("POST /api/installations/github", () => {
 	it("creates installation and syncs repos", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		vi.mocked(gitAppProvider.verifyInstallation).mockResolvedValueOnce({
 			id: 12345,
 			account: { login: "my-org", id: 1, type: "User" },
@@ -133,7 +148,7 @@ describe("POST /api/installations/github", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		await testPrisma.providerInstallation.create({
 			data: {
 				provider: "github",
@@ -167,7 +182,7 @@ describe("POST /api/installations/github", () => {
 	it("returns 400 when installationId is missing", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("POST", "/api/installations/github", {
 			body: {},
 		});

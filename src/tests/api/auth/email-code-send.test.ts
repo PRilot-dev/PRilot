@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { POST } from "@/app/api/auth/email-code/send/route";
-import { emailProvider } from "@/lib/server/providers/email";
+import { createPostHandler } from "@/app/api/auth/email-code/send/route";
+import { mockCacheProvider, mockEmailProvider, passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
-import { redisStore } from "@/tests/setup";
+
+const cacheProvider = mockCacheProvider();
+const emailProvider = mockEmailProvider();
+
+const POST = createPostHandler({
+	emailCodeSendLimiter: passingLimiter(),
+	cacheProvider,
+	emailProvider,
+});
 
 const SUCCESS_MESSAGE = "If this email is valid, a code has been sent.";
 
@@ -22,7 +30,7 @@ describe("POST /api/auth/email-code/send", () => {
 		expect(res.status).toBe(200);
 		expect(data).toMatchObject({ message: SUCCESS_MESSAGE });
 
-		const entry = redisStore.get(`auth:email-code:${email}`);
+		const entry = cacheProvider._store.get(`auth:email-code:${email}`);
 		expect(entry).toBeDefined();
 		const parsed = JSON.parse(entry!.value);
 		expect(parsed.hash).toMatch(/^[a-f0-9]{64}$/);
@@ -49,7 +57,7 @@ describe("POST /api/auth/email-code/send", () => {
 	it("overwrites a previous code for the same email", async () => {
 		// ARRANGE
 		const email = "user@example.com";
-		redisStore.set(`auth:email-code:${email}`, {
+		cacheProvider._store.set(`auth:email-code:${email}`, {
 			value: JSON.stringify({ hash: "old-hash", attempts: 3 }),
 			expireAt: Date.now() + 600_000,
 		});
@@ -61,7 +69,7 @@ describe("POST /api/auth/email-code/send", () => {
 		await POST(req);
 
 		// ASSERT
-		const entry = redisStore.get(`auth:email-code:${email}`);
+		const entry = cacheProvider._store.get(`auth:email-code:${email}`);
 		const parsed = JSON.parse(entry!.value);
 		expect(parsed.hash).not.toBe("old-hash");
 		expect(parsed.attempts).toBe(0);

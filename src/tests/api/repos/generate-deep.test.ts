@@ -1,10 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/repos/[repoId]/pull-requests/generate/deep/route";
+import { createPostHandler } from "@/app/api/repos/[repoId]/pull-requests/generate/deep/route";
 import { fetchCachedCompareData } from "@/lib/server/pr-generation";
-import { getCurrentUser } from "@/lib/server/session";
+import { testPrisma } from "@/tests/db";
+import { createMockGetCurrentUser, mockAIProvider, passingLimiter } from "@/tests/helpers/deps";
 import { seedRepo, validBranchBody } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = createMockGetCurrentUser();
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	aiProvider: mockAIProvider(),
+	aiLimiterPerMinute: passingLimiter(),
+	aiLimiterPerMonth: passingLimiter(),
+	getCurrentUser: mockGetCurrentUser,
+});
 
 const mockFile = { filename: "src/index.ts", status: "modified", changes: 10, patch: "diff" };
 
@@ -12,7 +23,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/deep", () => {
 	it("returns 200 with generated PR via SSE", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		vi.mocked(fetchCachedCompareData).mockResolvedValueOnce({
 			commits: ["feat: first commit"],
@@ -37,7 +48,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/deep", () => {
 	it("returns 400 when no file changes found", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		vi.mocked(fetchCachedCompareData).mockResolvedValueOnce({
 			commits: [],
@@ -61,7 +72,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/deep", () => {
 	it("returns 400 when too many lines changed", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		vi.mocked(fetchCachedCompareData).mockResolvedValueOnce({
 			commits: ["feat: big change"],
@@ -88,7 +99,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/deep", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/generate/deep`, {
 			body: validBranchBody(),
@@ -107,7 +118,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/deep", () => {
 	it("returns 404 when repo does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildRequest("POST", `/api/repos/${fakeId}/pull-requests/generate/deep`, {
 			body: validBranchBody(),
@@ -126,7 +137,7 @@ describe("POST /api/repos/[repoId]/pull-requests/generate/deep", () => {
 	it("returns 422 when branches are missing", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/pull-requests/generate/deep`, {
 			body: { baseBranch: "", compareBranch: "" },

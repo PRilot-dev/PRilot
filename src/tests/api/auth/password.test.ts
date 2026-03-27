@@ -1,10 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
-import { PATCH, POST } from "@/app/api/auth/password/route";
+import { createPatchHandler, createPostHandler } from "@/app/api/auth/password/route";
 import { verifyPassword } from "@/lib/server/password";
-import { getCurrentUser } from "@/lib/server/session";
 import { testPrisma } from "@/tests/db";
+import { createMockGetCurrentUser, passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = createMockGetCurrentUser();
+
+const deps = {
+	prisma: testPrisma,
+	changePasswordLimiter: passingLimiter(),
+	getCurrentUser: mockGetCurrentUser,
+};
+
+const PATCH = createPatchHandler(deps);
+const POST = createPostHandler(deps);
 
 describe("PATCH /api/auth/password (change password)", () => {
 	const validBody = {
@@ -26,7 +37,7 @@ describe("PATCH /api/auth/password (change password)", () => {
 	it("returns 200 and updates the password", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("PATCH", "/api/auth/password", { body: validBody });
 
 		// ACT
@@ -48,7 +59,7 @@ describe("PATCH /api/auth/password (change password)", () => {
 				expiresAt: new Date(Date.now() + 86_400_000),
 			},
 		});
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("PATCH", "/api/auth/password", { body: validBody });
 
 		// ACT
@@ -75,7 +86,7 @@ describe("PATCH /api/auth/password (change password)", () => {
 	it("returns 400 when user has no password (OAuth-only)", async () => {
 		// ARRANGE
 		const user = await seedUser(null);
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("PATCH", "/api/auth/password", { body: validBody });
 
 		// ACT
@@ -90,7 +101,7 @@ describe("PATCH /api/auth/password (change password)", () => {
 	it("returns 400 when current password is incorrect", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		vi.mocked(verifyPassword).mockRejectedValueOnce(
 			new (await import("@/lib/server/error")).BadRequestError("Incorrect current password"),
 		);
@@ -108,7 +119,7 @@ describe("PATCH /api/auth/password (change password)", () => {
 	it("returns 400 when new passwords do not match", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("PATCH", "/api/auth/password", {
 			body: { ...validBody, confirmPassword: "Mismatch1!" },
 		});
@@ -125,7 +136,7 @@ describe("PATCH /api/auth/password (change password)", () => {
 	it("returns 422 when body is invalid", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("PATCH", "/api/auth/password", {
 			body: { currentPassword: "x" },
 		});
@@ -157,7 +168,7 @@ describe("POST /api/auth/password (set password)", () => {
 	it("returns 200 and sets the password for an OAuth user", async () => {
 		// ARRANGE
 		const user = await seedOAuthUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: user.id, hasPassword: false }),
 		);
 		const req = buildRequest("POST", "/api/auth/password", { body: validBody });
@@ -182,7 +193,7 @@ describe("POST /api/auth/password (set password)", () => {
 				password: "existing-hash",
 			},
 		});
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const req = buildRequest("POST", "/api/auth/password", { body: validBody });
 
 		// ACT
@@ -210,7 +221,7 @@ describe("POST /api/auth/password (set password)", () => {
 	it("returns 400 when passwords do not match", async () => {
 		// ARRANGE
 		const user = await seedOAuthUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: user.id, hasPassword: false }),
 		);
 		const req = buildRequest("POST", "/api/auth/password", {
@@ -229,7 +240,7 @@ describe("POST /api/auth/password (set password)", () => {
 	it("returns 422 when body is invalid", async () => {
 		// ARRANGE
 		const user = await seedOAuthUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(
+		mockGetCurrentUser.mockResolvedValueOnce(
 			mockUser({ id: user.id, hasPassword: false }),
 		);
 		const req = buildRequest("POST", "/api/auth/password", {

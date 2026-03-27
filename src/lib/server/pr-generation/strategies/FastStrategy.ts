@@ -1,5 +1,5 @@
 import { buildPRFromCommits } from "@/lib/server/ai/prompt";
-import { BadRequestError } from "@/lib/server/error";
+import { SSEUserError } from "@/lib/server/ai/streamSSE";
 import type { PRLanguage } from "@/types/languages";
 import type { PRGenerationOutput, PRGenerationStrategy } from "../types";
 import type { CompareResult } from "../utils";
@@ -9,7 +9,7 @@ export class FastStrategy implements PRGenerationStrategy {
 
 	validate(data: CompareResult): void {
 		if (!data.commits.length) {
-			throw new BadRequestError("No commits found between branches");
+			throw new SSEUserError("No commits found between branches");
 		}
 	}
 

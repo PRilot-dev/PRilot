@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { GET } from "@/app/api/auth/github/start/route";
+import { createGetHandler } from "@/app/api/auth/github/start/route";
+import { passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest } from "@/tests/helpers/request";
+
+const GET = createGetHandler({
+	githubOAuthStartLimiter: passingLimiter(),
+});
 
 describe("GET /api/auth/github/start", () => {
 	it("redirects to GitHub OAuth with correct params", async () => {

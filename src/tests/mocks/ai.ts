@@ -34,7 +34,8 @@ vi.mock("@/lib/server/ai/streamSSE", () => ({
 			return handler(send)
 				.then(() => Response.json(result ?? defaultPR, { status: 200 }))
 				.catch((err: Error & { status?: number }) => {
-					const status = err.status ?? 500;
+					// SSEUserError = validation error shown to client (400)
+					const status = err.name === "SSEUserError" ? 400 : (err.status ?? 500);
 					const message = err.message ?? "Internal server error";
 					return Response.json({ error: message }, { status });
 				});

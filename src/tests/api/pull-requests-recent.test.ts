@@ -1,15 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
-import { GET } from "@/app/api/pull-requests/recent/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createGetHandler } from "@/app/api/pull-requests/recent/route";
+import { testPrisma } from "@/tests/db";
 import { seedPullRequest, seedRepo } from "@/tests/helpers/repo";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+import { createMockGetCurrentUser } from "@/tests/helpers/deps";
+
+const mockGetCurrentUser = createMockGetCurrentUser();
+
+const GET = createGetHandler({
+	prisma: testPrisma,
+	getCurrentUser: mockGetCurrentUser,
+});
 
 describe("GET /api/pull-requests/recent", () => {
 	it("returns 200 with recent PRs and weekly stats", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
 		const req = buildRequest("GET", "/api/pull-requests/recent");
@@ -31,7 +39,7 @@ describe("GET /api/pull-requests/recent", () => {
 	it("returns at most 3 recent PRs", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		for (let i = 0; i < 5; i++) {
 			await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
@@ -50,7 +58,7 @@ describe("GET /api/pull-requests/recent", () => {
 	it("excludes PRs from deleted repositories", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({
 			userId: user.id,
 			repoOverrides: { status: "deleted", name: "deleted-repo" },
@@ -71,7 +79,7 @@ describe("GET /api/pull-requests/recent", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		// PR created by user but user is not a member
 		await seedPullRequest({ repositoryId: repository.id, createdById: user.id });

@@ -1,10 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
-import { DELETE, GET, PATCH } from "@/app/api/repos/[repoId]/pull-requests/[prId]/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createDeleteHandler, createGetHandler, createPatchHandler } from "@/app/api/repos/[repoId]/pull-requests/[prId]/route";
 import { testPrisma } from "@/tests/db";
 import { seedPullRequest, seedRepo, validDraftBody } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+import { createMockGetCurrentUser } from "@/tests/helpers/deps";
+
+const mockGetCurrentUser = createMockGetCurrentUser();
+
+const deps = {
+	prisma: testPrisma,
+	getCurrentUser: mockGetCurrentUser,
+};
+
+const GET = createGetHandler(deps);
+const PATCH = createPatchHandler(deps);
+const DELETE = createDeleteHandler(deps);
 
 function prParams(repoId: string, prId: string) {
 	return buildParams({ repoId, prId });
@@ -17,7 +28,7 @@ describe("GET /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("returns 200 with the PR data", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
 		const req = buildRequest("GET", `/api/repos/${repository.id}/pull-requests/${pr.id}`);
@@ -37,7 +48,7 @@ describe("GET /api/repos/[repoId]/pull-requests/[prId]", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },
@@ -57,7 +68,7 @@ describe("GET /api/repos/[repoId]/pull-requests/[prId]", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: member.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: member.id }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },
@@ -78,7 +89,7 @@ describe("GET /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("returns 404 when PR does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildRequest("GET", `/api/repos/${repository.id}/pull-requests/${fakeId}`);
@@ -96,7 +107,7 @@ describe("GET /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("returns 400 when PR belongs to a different repo", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository: repo1 } = await seedRepo({ userId: user.id, repoOverrides: { name: "repo-1" } });
 		const { repository: repo2 } = await seedRepo({ userId: user.id, repoOverrides: { name: "repo-2" } });
 		const pr = await seedPullRequest({ repositoryId: repo2.id, createdById: user.id });
@@ -116,7 +127,7 @@ describe("GET /api/repos/[repoId]/pull-requests/[prId]", () => {
 		// ARRANGE
 		const user = await seedUser();
 		const other = await seedUser("other@example.com", "otheruser");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: other.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: other.id });
 		const req = buildRequest("GET", `/api/repos/${repository.id}/pull-requests/${pr.id}`);
@@ -153,7 +164,7 @@ describe("PATCH /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("updates a draft PR and returns 200", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
 		const body = validDraftBody({ prTitle: "Updated title", prBody: "Updated body content." });
@@ -176,7 +187,7 @@ describe("PATCH /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("returns 400 when PR is already sent", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({
 			repositoryId: repository.id,
@@ -200,7 +211,7 @@ describe("PATCH /api/repos/[repoId]/pull-requests/[prId]", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: member.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: member.id }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },
@@ -222,7 +233,7 @@ describe("PATCH /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("returns 404 when PR does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const body = validDraftBody();
@@ -241,7 +252,7 @@ describe("PATCH /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("returns 422 when body is invalid", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
 		const req = buildRequest("PATCH", `/api/repos/${repository.id}/pull-requests/${pr.id}`, {
@@ -279,7 +290,7 @@ describe("DELETE /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("deletes a draft PR and returns 200", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({ repositoryId: repository.id, createdById: user.id });
 		const req = buildRequest("DELETE", `/api/repos/${repository.id}/pull-requests/${pr.id}`);
@@ -300,7 +311,7 @@ describe("DELETE /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("returns 400 when PR is already sent", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const pr = await seedPullRequest({
 			repositoryId: repository.id,
@@ -323,7 +334,7 @@ describe("DELETE /api/repos/[repoId]/pull-requests/[prId]", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: member.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: member.id }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },
@@ -344,7 +355,7 @@ describe("DELETE /api/repos/[repoId]/pull-requests/[prId]", () => {
 	it("returns 404 when PR does not exist", async () => {
 		// ARRANGE
 		const user = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: user.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: user.id }));
 		const { repository } = await seedRepo({ userId: user.id });
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildRequest("DELETE", `/api/repos/${repository.id}/pull-requests/${fakeId}`);
@@ -363,7 +374,7 @@ describe("DELETE /api/repos/[repoId]/pull-requests/[prId]", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },

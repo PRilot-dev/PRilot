@@ -1,16 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/repos/[repoId]/invitations/route";
-import { getCurrentUser } from "@/lib/server/session";
+import { createPostHandler } from "@/app/api/repos/[repoId]/invitations/route";
 import { testPrisma } from "@/tests/db";
+import { createMockGetCurrentUser, mockEmailProvider, passingLimiter } from "@/tests/helpers/deps";
 import { seedRepo } from "@/tests/helpers/repo";
 import { buildParams, buildRequest, parseJson } from "@/tests/helpers/request";
 import { mockUser, seedUser } from "@/tests/helpers/user";
+
+const mockGetCurrentUser = createMockGetCurrentUser();
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	emailProvider: mockEmailProvider(),
+	inviteEmailLimiter: passingLimiter(),
+	getCurrentUser: mockGetCurrentUser,
+});
 
 describe("POST /api/repos/[repoId]/invitations", () => {
 	it("creates an invitation and returns 200", async () => {
 		// ARRANGE
 		const owner = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/invitations`, {
 			body: { email: "invited@example.com" },
@@ -34,7 +43,7 @@ describe("POST /api/repos/[repoId]/invitations", () => {
 	it("resends invitation if one already exists for the same email", async () => {
 		// ARRANGE
 		const owner = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.invitation.create({
 			data: {
@@ -66,7 +75,7 @@ describe("POST /api/repos/[repoId]/invitations", () => {
 	it("returns 409 when inviting self", async () => {
 		// ARRANGE
 		const owner = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/invitations`, {
 			body: { email: owner.email },
@@ -86,7 +95,7 @@ describe("POST /api/repos/[repoId]/invitations", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },
@@ -108,7 +117,7 @@ describe("POST /api/repos/[repoId]/invitations", () => {
 	it("returns 409 when max members (4) would be exceeded", async () => {
 		// ARRANGE
 		const owner = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		// Add 3 more members (total 4 with owner)
 		for (let i = 0; i < 3; i++) {
@@ -137,7 +146,7 @@ describe("POST /api/repos/[repoId]/invitations", () => {
 		// ARRANGE
 		const owner = await seedUser();
 		const member = await seedUser("member@example.com", "member");
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: member.id, email: member.email }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: member.id, email: member.email }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		await testPrisma.repositoryMember.create({
 			data: { repositoryId: repository.id, userId: member.id, role: "member" },
@@ -159,7 +168,7 @@ describe("POST /api/repos/[repoId]/invitations", () => {
 	it("returns 404 when repo does not exist", async () => {
 		// ARRANGE
 		const owner = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
 		const fakeId = "00000000-0000-0000-0000-000000000000";
 		const req = buildRequest("POST", `/api/repos/${fakeId}/invitations`, {
 			body: { email: "invited@example.com" },
@@ -178,7 +187,7 @@ describe("POST /api/repos/[repoId]/invitations", () => {
 	it("returns 422 when email is invalid", async () => {
 		// ARRANGE
 		const owner = await seedUser();
-		vi.mocked(getCurrentUser).mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
+		mockGetCurrentUser.mockResolvedValueOnce(mockUser({ id: owner.id, email: owner.email }));
 		const { repository } = await seedRepo({ userId: owner.id });
 		const req = buildRequest("POST", `/api/repos/${repository.id}/invitations`, {
 			body: { email: "not-an-email" },

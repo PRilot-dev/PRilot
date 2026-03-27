@@ -1,5 +1,5 @@
 import { buildPRFromDiffs } from "@/lib/server/ai/prompt";
-import { BadRequestError } from "@/lib/server/error";
+import { SSEUserError } from "@/lib/server/ai/streamSSE";
 import { prepareFileDiffForAI } from "@/lib/server/github/fileDiffs";
 import type { PRLanguage } from "@/types/languages";
 import type { PRGenerationOutput, PRGenerationStrategy } from "../types";
@@ -13,7 +13,7 @@ export class DeepStrategy implements PRGenerationStrategy {
 
 	validate(data: CompareResult): void {
 		if (!data.files || data.files.length === 0) {
-			throw new BadRequestError(
+			throw new SSEUserError(
 				"No file changes found between branches",
 			);
 		}
@@ -23,7 +23,7 @@ export class DeepStrategy implements PRGenerationStrategy {
 			0,
 		);
 		if (totalChanges > MAX_CHANGES) {
-			throw new BadRequestError(
+			throw new SSEUserError(
 				"Too many lines changed (max 500 for deep mode). Please use fast mode instead.",
 			);
 		}

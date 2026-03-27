@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { POST } from "@/app/api/auth/forgot-password/route";
-import { emailProvider } from "@/lib/server/providers/email";
+import { createPostHandler } from "@/app/api/auth/forgot-password/route";
 import { testPrisma } from "@/tests/db";
+import { mockEmailProvider, passingLimiter } from "@/tests/helpers/deps";
 import { buildRequest, parseJson } from "@/tests/helpers/request";
+
+const emailProvider = mockEmailProvider();
+
+const POST = createPostHandler({
+	prisma: testPrisma,
+	forgotPasswordLimiter: passingLimiter(),
+	emailProvider,
+});
 
 const SUCCESS_MESSAGE = "If an account exists with this email, a reset link has been sent.";
 
