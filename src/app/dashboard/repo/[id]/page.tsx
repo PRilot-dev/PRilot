@@ -8,6 +8,7 @@ import {
 	GitBranch,
 	GitPullRequest,
 	Plus,
+	Settings,
 	Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -151,14 +152,20 @@ export default function RepositoryPage() {
 						triggerOnView={false}
 						className="grid grid-cols-2 md:flex gap-3 mt-4 md:mt-0 w-full md:w-fit"
 					>
+						<Link href={`/dashboard/repo/${id}/settings`} prefetch={false} className="w-full">
+							<Button className="w-full md:w-28 col-span-1 bg-gray-200 dark:bg-gray-900 shadow-md border border-gray-300 dark:border-gray-800 hover:bg-gray-300 hover:dark:bg-gray-700">
+								<Settings className="w-4 h-4 mr-2" />
+								Settings
+							</Button>
+						</Link>
 						<Link href={`/dashboard/repo/${id}/members`} prefetch={false} className="w-full">
-							<Button className="w-full md:w-28 bg-gray-200 dark:bg-gray-900 shadow-md border border-gray-300 dark:border-gray-800 hover:bg-gray-300 hover:dark:bg-gray-700">
+							<Button className="w-full md:w-28 col-span-1 bg-gray-200 dark:bg-gray-900 shadow-md border border-gray-300 dark:border-gray-800 hover:bg-gray-300 hover:dark:bg-gray-700">
 								<Users className="w-4 h-4 mr-2" />
 								Members
 							</Button>
 						</Link>
 						{repo.isAccessible ? (
-							<Link href={`/dashboard/repo/${id}/pr/new`} className="w-full">
+							<Link href={`/dashboard/repo/${id}/pr/new`} className="w-full col-span-2">
 								<Button className="w-full md:w-30 bg-gray-900 text-white shadow-md dark:bg-gray-200 dark:text-black hover:bg-gray-700 hover:dark:bg-gray-400 group">
 									<Plus className="w-4 h-4 mr-2 group-hover:rotate-90 duration-250" />
 									Generate PR
@@ -167,7 +174,7 @@ export default function RepositoryPage() {
 						) : (
 							<Button
 								disabled
-								className="w-full px-2 flex bg-gray-900 text-white shadow-md dark:bg-gray-200 dark:text-black opacity-50 cursor-not-allowed"
+								className="w-full col-span-2 px-2 flex bg-gray-900 text-white shadow-md dark:bg-gray-200 dark:text-black opacity-50 cursor-not-allowed"
 							>
 								<Plus className="w-4 h-4 mr-2" />
 								Generate PR
