@@ -143,6 +143,7 @@ model Repository {
   members         RepositoryMember[]
   invitations     Invitation[]
   pullRequests    PullRequest[]
+  templateBlocks  RepositoryBlock[]
 
   @@unique([provider, providerRepoId])
   @@map("repositories")
@@ -186,6 +187,38 @@ model Invitation {
   @@unique([repositoryId, email])
   @@index([email])
   @@map("invitations")
+}
+
+model Block {
+  id              String   @id @default(uuid()) @db.Uuid
+  slug            String   @unique
+  name            String
+  description     String
+  promptConcise   String
+  promptStandard  String
+  promptDetailed  String
+  createdAt       DateTime @default(now())
+
+  repositoryBlocks RepositoryBlock[]
+
+  @@map("blocks")
+}
+
+model RepositoryBlock {
+  id            String   @id @default(uuid()) @db.Uuid
+  repositoryId  String   @db.Uuid
+  blockId       String   @db.Uuid
+  branchType    String   @default("default") // "default", "feat", "fix", "chore", "refactor", "docs"
+  position      Int
+  detailLevel   Int      @default(2) // 1 = concise, 2 = standard, 3 = detailed
+  createdAt     DateTime @default(now())
+
+  repository    Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  block         Block      @relation(fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, blockId, branchType])
+  @@index([repositoryId, branchType])
+  @@map("repository_blocks")
 }
 
 model PullRequest {
